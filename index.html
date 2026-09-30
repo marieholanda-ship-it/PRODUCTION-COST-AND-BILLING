@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PCMD · Production Cost &amp; Attendance · Vienovo</title>
+<meta name="theme-color" content="#00516b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============ tokens ============ */
+:root{
+  --bg:#f2f6f9; --panel:#ffffff; --soft:#eef4f7; --ink:#0e2431; --mut:#6b8290; --line:#e4ecf1;
+  --brand:#00516b; --brand2:#007ca0; --acc:#8dc63f; --acc2:#6fa82c;
+  --ok:#1f9d55; --warn:#d98a00; --bad:#e5484d; --info:#3b82f6;
+  --c1:#0b6e91; --c2:#00a3c4; --c3:#8dc63f; --c4:#7c6cf0; --c5:#f5a524;
+  --r:16px; --shadow:0 1px 2px rgba(16,40,54,.04),0 10px 28px rgba(16,40,54,.06);
+}
+html[data-theme="dark"]{
+  --bg:#08161e; --panel:#0f2530; --soft:#122c38; --ink:#e6f0f5; --mut:#8ba6b3; --line:#1d3a49;
+  --brand:#4bb3dd; --brand2:#2f9bc7; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+::selection{background:var(--acc);color:#0d2b06}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#c3d3dc;border-radius:8px;border:2px solid transparent;background-clip:content-box}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#21404f;background-clip:content-box}
+
+/* ============ shell ============ */
+.app{display:flex;min-height:100vh}
+.sidebar{width:252px;flex:none;background:linear-gradient(178deg,#073a4c 0%,#00516b 62%,#045f7d 100%);color:#cfe6ef;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:60}
+.brand{display:flex;gap:11px;align-items:center;padding:20px 18px 14px}
+.brand .mark{width:42px;height:42px;flex:none;border-radius:13px;background:linear-gradient(135deg,#8dc63f,#4bb3dd);display:grid;place-items:center;color:#06323f;font-weight:800;font-size:19px;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.brand b{color:#fff;font-size:17px;display:block;line-height:1.1;letter-spacing:.01em}
+.brand small{color:#8fb9c9;font-size:10.5px;letter-spacing:.02em}
+.nav{padding:6px 10px;display:flex;flex-direction:column;gap:2px;overflow:auto;flex:1}
+.nav .grp{font-size:10px;font-weight:800;letter-spacing:.12em;color:#6d9cb0;padding:14px 12px 6px;text-transform:uppercase}
+.nav button{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;color:#bcd8e3;font:600 13.5px inherit;padding:10px 12px;border-radius:11px;cursor:pointer;text-align:left;transition:.15s}
+.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav button.on{background:rgba(141,198,63,.17);color:#fff;box-shadow:inset 3px 0 0 var(--acc)}
+.nav button .ic{opacity:.95}
+.side-foot{padding:12px 18px;border-top:1px solid rgba(255,255,255,.09);font-size:10.5px;color:#8fb9c9;line-height:1.5}
+.side-foot b{color:#bfe0ec}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--panel) 86%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:11px 20px}
+.hamb{display:none;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;padding:8px;cursor:pointer}
+.crumb{flex:1;min-width:0}
+.crumb h1{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em}
+.crumb p{margin:1px 0 0;font-size:12px;color:var(--mut)}
+.tb-actions{display:flex;align-items:center;gap:8px}
+.user{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 12px;border:1px solid var(--line);border-radius:99px;background:var(--panel)}
+.user .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--acc));color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}
+.user span{font-size:12.5px;font-weight:700}
+.view{padding:22px;max-width:1460px;width:100%}
+.hide-desk{display:inline}
+.overlay{display:none;position:fixed;inset:0;background:rgba(6,25,34,.55);z-index:55;backdrop-filter:blur(2px)}
+
+/* ============ primitives ============ */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);min-width:0}
+.card h3{margin:0;font-size:14px;font-weight:800;letter-spacing:-.01em}
+.card .sub{color:var(--mut);font-size:12px;margin:3px 0 12px}
+.grid{display:grid;gap:16px;margin-bottom:16px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:1fr 1fr}
+.g21{grid-template-columns:2fr 1fr}
+.g12{grid-template-columns:1fr 2fr}
+.btn{display:inline-flex;align-items:center;gap:7px;border:0;background:var(--brand);color:#fff;font:700 13px inherit;padding:9px 15px;border-radius:10px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{filter:brightness(1.06)}
+.btn.g{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.btn.g:hover{border-color:var(--brand2);color:var(--brand)}
+.btn.a{background:var(--acc);color:#173d05}
+.btn.d{background:transparent;color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}
+.btn.s{padding:6px 11px;font-size:12px;border-radius:9px}
+.btn.block{width:100%;justify-content:center}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-weight:700;font-size:11.5px;white-space:nowrap}
+.p-ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.p-w{background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn)}
+.p-b{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+.p-n{background:var(--soft);color:var(--mut);border:1px solid var(--line)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent);padding:4px 11px;border-radius:99px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:16px}
+.fgroup{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input,textarea{font:600 13px inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;max-width:100%;outline:none;transition:.15s}
+select:focus,input:focus,textarea:focus{border-color:var(--brand2);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand2) 18%,transparent)}
+label.f{display:block;font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px}
+.field{margin-bottom:12px}
+.empty{text-align:center;padding:46px 12px;color:var(--mut)}
+.empty .big{font-size:30px;margin-bottom:6px;opacity:.6}
+.mu{color:var(--mut)}
+.up{color:var(--bad)}
+.dn{color:var(--ok)}
+
+/* KPI */
+.kpi .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.kpi .kic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;color:#fff;background:var(--ac,var(--brand));box-shadow:0 6px 14px color-mix(in srgb,var(--ac,var(--brand)) 35%,transparent)}
+.kpi .l{font-size:10.5px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.07em}
+.kpi .v{font-size:27px;font-weight:800;margin:6px 0 3px;letter-spacing:-.02em}
+.kpi .d{font-size:11.5px;font-weight:600;color:var(--mut)}
+.kpi .d .pill{padding:2px 8px;font-size:11px}
+
+/* tables */
+.sc{overflow-x:auto;border-radius:12px}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+table.t th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:800;position:sticky;top:0;background:var(--panel)}
+table.t td{padding:9px 10px;border-bottom:1px solid var(--line)}
+table.t tr:last-child td{border-bottom:0}
+table.t tbody tr:hover{background:var(--soft)}
+table.t tr.tot td{background:var(--soft);font-weight:800}
+.r{text-align:right}
+
+/* bars / badges */
+.hb{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
+.hb .lb{width:120px;flex:none;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hb .tr{flex:1;background:var(--soft);border-radius:8px;height:12px;overflow:hidden}
+.hb .tr i{display:block;height:100%;border-radius:8px}
+.hb .vl{width:86px;text-align:right;flex:none;font-weight:700}
+svg.ch{width:100%;height:auto;display:block}
+svg.dn{width:180px;height:180px;display:block;margin:auto}
+.gl{stroke:var(--line);stroke-width:1}
+.ax{fill:var(--mut);font-size:10px;font-weight:600}
+.dv{fill:var(--ink);font-weight:800;font-size:15px}
+
+/* heatmap */
+.heat td{padding:3px;border:0;text-align:center}
+.heat td>div{border-radius:7px;padding:7px 2px;font-size:10.5px;font-weight:800;min-width:40px}
+.heat th{text-align:center;padding:2px;font-size:10px;color:var(--mut)}
+
+/* report / paper */
+.paper{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px;max-width:880px;margin:0 auto;box-shadow:var(--shadow)}
+.paper .hd{background:linear-gradient(120deg,var(--brand),var(--brand2));color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:16px}
+.paper .hd b{font-size:18px;letter-spacing:.04em}
+.infogrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:12.5px;margin-bottom:14px}
+.infogrid .mu{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:800}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:20px;font-size:11.5px}
+.sig>div{border-top:1.5px solid var(--mut);padding-top:6px}
+.sig b{display:block;font-size:12px}
+.iss{font-size:12px;margin:4px 0;display:flex;gap:6px;align-items:flex-start}
+.iss.b{color:var(--bad)} .iss.w{color:var(--warn)}
+
+/* tracker */
+.tk{display:inline-grid;place-items:center;width:26px;height:24px;border-radius:7px;font-size:11px;font-weight:800;margin:1px;cursor:pointer;border:1px solid transparent;transition:.15s}
+.tk:hover{transform:translateY(-1px)}
+
+/* employee grid */
+.eg{border-collapse:separate;border-spacing:0;font-size:12px}
+.eg td,.eg th{padding:1px;border:0;text-align:center}
+.eg th{position:sticky;top:0;background:var(--panel);z-index:2;font-size:10px;color:var(--mut);font-weight:800}
+.eg .n{position:sticky;left:0;background:var(--panel);text-align:left;padding:4px 12px 4px 2px;white-space:nowrap;z-index:1;min-width:170px}
+.eg th.n{z-index:3}
+.eg .sn{border-left:2px solid var(--line)}
+.ec{height:22px;border-radius:6px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800;margin:1px auto}
+
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(6,25,34,.55);backdrop-filter:blur(3px);z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;width:100%;max-width:900px;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:pop .18s ease}
+@keyframes pop{from{transform:translateY(8px) scale(.99);opacity:0}to{transform:none;opacity:1}}
+.modal .mh{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);border-radius:18px 18px 0 0;z-index:2}
+.modal .mh h3{margin:0;font-size:15px}
+.modal .mb{padding:20px}
+.modal .mf{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:var(--panel);border-radius:0 0 18px 18px}
+.rv input,.rv select{width:100%;min-width:74px}
+.rv td input[type=number]{width:74px}
+.x{background:none;border:1px solid var(--line);border-radius:9px;color:var(--ink);cursor:pointer;padding:6px;display:grid;place-items:center}
+
+/* toast */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:12px;font-weight:700;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:200;box-shadow:0 12px 30px rgba(0,0,0,.3)}
+#toast.on{opacity:1;transform:translateX(-50%)}
+
+/* responsive */
+@media(max-width:1180px){.g4{grid-template-columns:repeat(2,1fr)}.g21,.g12{grid-template-columns:1fr}}
+@media(max-width:980px){
+  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 60px rgba(0,0,0,.4)}
+  .app.nav-open .sidebar{transform:none}
+  .app.nav-open .overlay{display:block}
+  .hamb{display:grid}
+}
+@media(max-width:720px){
+  .view{padding:14px}
+  .g4,.g3,.g2,.g21,.g12{grid-template-columns:1fr}
+  .user span{display:none}
+  .hide-desk{display:none}
+  .topbar{padding:10px 14px}
+}
+@media print{
+  body *{visibility:hidden!important}
+  #rpt,#rpt *{visibility:visible!important}
+  #rpt{position:absolute;left:0;top:0;width:100%;border:0;box-shadow:none;border-radius:0;padding:0}
+  .no-print{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="overlay" data-act="nav-close"></div>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">V</div>
+      <div><b>Vienovo</b><small>PCMD &middot; Production Cost &amp; Attendance</small></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <b>Data saved on this device</b><br>
+      Export a backup from Settings before clearing your browser.
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <button class="hamb" data-act="nav-open" aria-label="Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="crumb"><h1 id="ttl">Dashboard</h1><p id="crumb">Company-wide overview</p></div>
+      <div class="tb-actions">
+        <button class="btn a" data-act="sheet-new" title="Add attendance sheet">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span class="hide-desk">New sheet</span>
+        </button>
+        <button class="x" data-act="theme" id="themeBtn" aria-label="Toggle theme" title="Toggle theme"></button>
+        <div class="user"><div class="av">VA</div><span>Vienovo Admin</span></div>
+      </div>
+    </header>
+    <div class="view" id="view"></div>
+  </div>
+</div>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* =======================================================================
+   PCMD · Production Cost & Attendance
+   Vienovo Philippines, Inc.  |  Agency: PRIJ Manpower Services
+   Single-file web app · no install · data stored in localStorage
+   ======================================================================= */
+
+/* ---------- constants ---------- */
+const KEY='pcmd.v1';
+const DEFAULT_PLANTS=['AC - Bulacan','PFMIS','HOREB','ARGAO','BUKID','SOUTH','CCPC'];
+const DEFAULT_ATT_PLANTS=['AC - Bulacan','PFMIS','HOREB','ARGAO','BUKID'];
+const DEFAULT_SHIFTS=['First','Second'];
+const DEFAULT_CATS=['Electricity','Water','Fuel','Manpower Agency','Others'];
+const DEFAULT_POSITIONS=['Coordinator','Team Leader','Plant Utility','Mix Grain','FG Bagging','Repacking','Micro Weigher','Macro Weigher','Pouring','Tool Keeper / Maintenance Assist'];
+const DEFAULT_REQ={'Coordinator':1,'Team Leader':1,'Plant Utility':1,'Mix Grain':3,'FG Bagging':1,'Repacking':1,'Micro Weigher':1,'Macro Weigher':3,'Pouring':2,'Tool Keeper / Maintenance Assist':2};
+const DEFAULT_AGENCIES=['PRIJ Manpower Services','Asia Peopleworks, Inc.'];
+const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Agency Admin Staff)'],['att','Attested by (Vienovo Warehouse Coordinator)'],['con','Concurred by (Vienovo Warehouse Team Leader)']];
+const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
+const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+/* ---------- tiny helpers ---------- */
+const $=s=>document.querySelector(s);
+const uid=()=>Math.random().toString(36).slice(2,9);
+const sum=(a,f)=>a.reduce((s,x)=>s+(+f(x)||0),0);
+const peso=n=>'₱'+Number(n||0).toLocaleString('en-PH',{maximumFractionDigits:0});
+const shortv=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e3?Math.round(n/1e3)+'K':Math.round(n);
+const ml=p=>p?MN[+p.slice(5,7)-1]+' '+p.slice(0,4):'—';
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>new Date().toISOString().slice(0,10);
+const curMonth=()=>today().slice(0,7);
+const addDay=(dt,n)=>{const t=new Date(dt+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10)};
+const dim=ym=>new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate();
+const dow=d=>new Date(d+'T00:00:00Z').getUTCDay();
+const sun=d=>addDay(d,-dow(d));
+const fD=d=>MN[+d.slice(5,7)-1]+' '+(+d.slice(8));
+const pct=(a,b)=>b?a/b*100:0;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- icons (feather-style, inline svg) ---------- */
+const ICONS={
+ grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
+ wallet:'<path d="M3 7a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 12h.01"/><path d="M3 10h18"/>',
+ users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+ db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+ upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+ sun:'<circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/>',
+ moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+ plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+ trash:'<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+ edit:'<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/>',
+ print:'<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+ download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+ x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+ check:'<polyline points="20 6 9 17 4 12"/>',
+ alert:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+ refresh:'<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>',
+ trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+ cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>'
+};
+const icon=(n,sz)=>'<svg class="ic" width="'+(sz||18)+'" height="'+(sz||18)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||'')+'</svg>';
+
+/* ---------- state ---------- */
+let S=null, nav='overview', filters={plant:'all',month:'all',shift:'all'}, draft=null, open={}, lim=60, eg=null, toastTimer=null;
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Storage full — export a backup')}}
+function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
+
+/* ---------- sample data ---------- */
+function generateSample(){
+  let sd=11;const rnd=()=>(sd=(sd*9301+49297)%233280)/233280;
+  const months=['2026-04','2026-05','2026-06','2026-07','2026-08','2026-09'];
+  const base={Electricity:[180,320],Water:[25,60],Fuel:[90,240],'Manpower Agency':[140,260],Others:[10,40]};
+  const vend={Electricity:'Local electric utility',Water:'Water district',Fuel:'Fuel supplier','Manpower Agency':'PRIJ Manpower Services',Others:'Various'};
+  S.bills=[];
+  DEFAULT_PLANTS.forEach((p,pi)=>months.forEach((m,mi)=>DEFAULT_CATS.forEach(c=>{
+    const b=base[c],amt=Math.round((b[0]+(b[1]-b[0])*rnd())*1000*(1+mi*.02)*(pi<3?1.2:.8));
+    S.bills.push({id:uid(),plant:p,cat:c,vendor:(p==='HOREB'&&c==='Manpower Agency')?'PRIJ Manpower Services':vend[c],inv:'INV-'+(1000+S.bills.length),per:m,amt});
+  })));
+  /* attendance sheets + rosters */
+  const FN='Oliver Glen Junior Winson Jimboy Alfredo Dave Ivan Felix Earl Rey Dexter Mark Ryan Carlo Joel Ramil Noel Arnel Rico Jerome Bong Kevin Paolo Jessie Tonton Ariel Nestor Renato Cris Allan Jun Lito Bert Migs Ronnie Eddie Marlon Randy Nico'.split(' ');
+  const LN='Santos Reyes Cruz Bautista Ocampo Garcia Mendoza Torres Flores Ramos Aquino Castillo Villanueva Navarro Salazar Domingo Pascual Soriano Valdez Manalo Cabrera Lim'.split(' ');
+  const AP=DEFAULT_ATT_PLANTS.slice(),SH=DEFAULT_SHIFTS;
+  let k=0;
+  const pool=AP.map((p,pi)=>SH.map((sh,si)=>DEFAULT_POSITIONS.map((pos,i)=>{
+    const r=Math.max(0,(DEFAULT_REQ[pos]||1)+(pi%2&&i===3?1:0)-(si&&i>5?1:0));
+    return Array.from({length:r?r+1:0},()=>{const j=k++;return FN[j%FN.length]+' '+LN[(j*3+pi)%LN.length]});
+  })));
+  S.sheets=[];
+  AP.forEach((p,pi)=>{for(let d=1;d<=30;d++)SH.forEach((sh,si)=>{
+    if(rnd()<.05)return;
+    const rows={},ros=[];
+    DEFAULT_POSITIONS.forEach((pos,i)=>{
+      const L=pool[pi][si][i],r=Math.max(0,L.length-1);let ac=0;
+      L.forEach((n,x)=>{if(r&&(d+i)%(r+1)===x)return;const bd=(x+i+pi)%7===0?.2:.05,t=rnd(),a=t<bd?0:t<bd+.03?2:1;if(a===1)ac++;ros.push({n,p:pos,a})});
+      rows[pos]=[r,ac];
+    });
+    const sig={prep:1,check:1,att:1,con:1};if(rnd()<.08)sig[SIGS[Math.floor(rnd()*4)][0]]=0;
+    const ac=sum(DEFAULT_POSITIONS,q=>rows[q][1]);
+    S.sheets.push({id:uid(),plant:p,date:'2026-09-'+pad(d),shift:sh,agency:p==='HOREB'?'PRIJ Manpower Services':'Asia Peopleworks, Inc.',rows,sig,decl:rnd()<.03?ac+1:ac,ros});
+  })});
+}
+
+/* ---------- filters / selectors ---------- */
+const fBills=()=>S.bills.filter(b=>(filters.plant==='all'||b.plant===filters.plant)&&(filters.month==='all'||b.per===filters.month));
+const fSheets=()=>S.sheets.filter(s=>(filters.plant==='all'||s.plant===filters.plant)&&(filters.month==='all'||s.date.slice(0,7)===filters.month)&&(filters.shift==='all'||s.shift===filters.shift));
+const monthsList=()=>[...new Set([...S.bills.map(b=>b.per),...S.sheets.map(s=>s.date.slice(0,7))])].filter(Boolean).sort();
+
+function filterBar(withShift){
+  const plants=filters.att?S.settings.attPlants:S.settings.plants;
+  return '<div class="toolbar"><div class="fgroup">'
+    +'<select data-filter="plant"><option value="all">All plants</option>'+S.settings.plants.map(p=>'<option '+(p===filters.plant?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select>'
+    +'<select data-filter="month"><option value="all">All months</option>'+monthsList().map(m=>'<option value="'+m+'" '+(m===filters.month?'selected':'')+'>'+ml(m)+'</option>').join('')+'</select>'
+    +(withShift?'<select data-filter="shift"><option value="all">All shifts</option>'+S.settings.shifts.map(x=>'<option '+(x===filters.shift?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select>':'')
+    +'</div>'+(S.sample?'<span class="chip">Sample data</span>':'')+'</div>';
+}
+
+/* ---------- validation ---------- */
+function validate(s){
+  const iss=[],P=S.settings.positions;
+  const rq=sum(P,p=>s.rows&&s.rows[p]?s.rows[p][0]:0),ac=sum(P,p=>s.rows&&s.rows[p]?s.rows[p][1]:0);
+  if(!s.plant||!/^\d{4}-\d\d-\d\d$/.test(s.date||''))iss.push(['b','Plant or date missing']);
+  if(s.decl!=null&&s.decl!==''&&+s.decl!==ac)iss.push(['b','Declared total '+s.decl+' does not equal sum of positions '+ac]);
+  SIGS.forEach(([k,l])=>{if(!s.sig||!s.sig[k])iss.push(['b','Unsigned: '+l])});
+  if(S.sheets.some(x=>x.id!==s.id&&x.plant===s.plant&&x.date===s.date&&x.shift===s.shift&&x.agency===s.agency))iss.push(['b','Duplicate: same plant, date, shift and agency already recorded']);
+  if(s.ros&&s.ros.length){const np=s.ros.filter(x=>x.a===1).length;if(np!==ac)iss.push(['w','Roster shows '+np+' present but actual total is '+ac])}
+  P.forEach(p=>{const r=s.rows&&s.rows[p];if(!r)return;if(r[1]<r[0])iss.push(['w',p+': short by '+(r[0]-r[1])]);else if(r[1]>r[0])iss.push(['w',p+': over by '+(r[1]-r[0])])});
+  const st=SIGS.every(([k])=>s.sig&&s.sig[k])?'ok':'un';
+  return {iss,rq,ac,st};
+}
+const badge=st=>'<span class="pill '+(st==='ok'?'p-ok':'p-b')+'">'+(st==='ok'?'Signed':'Unsigned')+'</span>';
+const fillPill=r=>'<span class="pill '+(r>=95?'p-ok':r>=90?'p-w':'p-b')+'">'+(r||0).toFixed(1)+'%</span>';
+const fillColor=r=>r>=98?'var(--ok)':r>=95?'var(--acc)':r>=90?'var(--warn)':'var(--bad)';
+
+/* ---------- charts ---------- */
+function stackBars(ms,d){
+  const W=660,H=260,pad=44,mx=Math.max(1,...ms.map(m=>sum(S.settings.cats,c=>d[m][c]))),bw=Math.min(58,(W-pad)/ms.length*.6);
+  let s='<svg viewBox="0 0 '+W+' '+H+'" class="ch">';
+  for(let i=0;i<=4;i++){const y=12+(H-44)*(1-i/4);s+='<line x1="'+pad+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" class="gl"/><text x="'+(pad-6)+'" y="'+(y+3)+'" class="ax" text-anchor="end">'+shortv(mx*i/4)+'</text>'}
+  ms.forEach((m,i)=>{const x=pad+(W-pad)/ms.length*(i+.5)-bw/2;let y=H-32;
+    S.settings.cats.forEach(c=>{const v=d[m][c]||0,h=v/mx*(H-44);if(h>0){y-=h;s+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+h+'" rx="3" style="fill:'+CATCOLOR[c]+'"><title>'+ml(m)+' '+c+': '+peso(v)+'</title></rect>'}});
+    s+='<text x="'+(x+bw/2)+'" y="'+(H-14)+'" class="ax" text-anchor="middle">'+MN[+m.slice(5)-1]+'</text>';});
+  return s+'</svg>';
+}
+function donut(items,tot){
+  let a=-Math.PI/2,s='<svg viewBox="0 0 120 120" class="dn">';
+  items.forEach(([c,v])=>{if(!v||!tot)return;const f=v/tot*2*Math.PI,r=46,x1=60+r*Math.cos(a),y1=60+r*Math.sin(a);a+=f;const x2=60+r*Math.cos(a-.0001),y2=60+r*Math.sin(a-.0001);
+    s+='<path d="M'+x1+' '+y1+'A'+r+' '+r+' 0 '+(f>Math.PI?1:0)+' 1 '+x2+' '+y2+'" fill="none" stroke-width="16" style="stroke:'+CATCOLOR[c]+'"><title>'+c+': '+peso(v)+'</title></path>'});
+  return s+'<text x="60" y="58" text-anchor="middle" class="dv">₱'+shortv(tot)+'</text><text x="60" y="72" text-anchor="middle" class="ax">total</text></svg>';
+}
+function areaLine(pts,target){
+  const W=660,H=230,pad=40,v=pts.map(x=>x[1]);
+  let lo=Math.min.apply(null,v.concat([target||95,90]))-3,hi=Math.max.apply(null,v.concat([target||95,100]));
+  if(hi-lo<6){hi=lo+6}
+  const X=i=>pad+(W-pad-8)*(pts.length<2?.5:i/(pts.length-1)),Y=y=>12+(H-44)*(1-(y-lo)/(hi-lo));
+  let s='<svg viewBox="0 0 '+W+' '+H+'" class="ch">';
+  for(let i=0;i<=4;i++){const g=lo+(hi-lo)*i/4;s+='<line x1="'+pad+'" x2="'+W+'" y1="'+Y(g)+'" y2="'+Y(g)+'" class="gl"/><text x="'+(pad-6)+'" y="'+(Y(g)+3)+'" class="ax" text-anchor="end">'+Math.round(g)+'%</text>'}
+  if(target){s+='<line x1="'+pad+'" x2="'+W+'" y1="'+Y(target)+'" y2="'+Y(target)+'" stroke-dasharray="5 4" style="stroke:var(--acc)"/><text x="'+W+'" y="'+(Y(target)-5)+'" class="ax" text-anchor="end">'+target+'% target</text>'}
+  const dd=pts.map((q,i)=>(i?'L':'M')+X(i)+' '+Y(q[1])).join('');
+  s+='<path d="'+dd+'L'+X(pts.length-1)+' '+(H-32)+'L'+X(0)+' '+(H-32)+'Z" style="fill:var(--brand);opacity:.10"/>';
+  s+='<path d="'+dd+'" fill="none" stroke-width="2.6" style="stroke:var(--brand)"/>';
+  const step=Math.ceil(pts.length/8);
+  pts.forEach((q,i)=>{s+='<circle cx="'+X(i)+'" cy="'+Y(q[1])+'" r="3.6" style="fill:'+(target&&q[1]<target?'var(--bad)':'var(--brand)')+'"><title>'+q[0]+': '+q[1].toFixed(1)+'%</title></circle>';if(i%step===0)s+='<text x="'+X(i)+'" y="'+(H-14)+'" class="ax" text-anchor="middle">'+q[0].slice(5)+'</text>'});
+  return s+'</svg>';
+}
+const hbar=(l,v,mx,t,c)=>'<div class="hb"><span class="lb" title="'+esc(l)+'">'+esc(l)+'</span><div class="tr"><i style="width:'+Math.min(100,v/(mx||1)*100)+'%;background:'+(c||'linear-gradient(90deg,var(--brand),var(--c2))')+'"></i></div><span class="vl">'+t+'</span></div>';
+
+/* ---------- KPI ---------- */
+function kpi(label,value,detail,ic,accent){
+  return '<div class="card kpi"><div class="top"><div class="l">'+label+'</div><span class="kic" style="--ac:'+(accent||'var(--brand)')+'">'+icon(ic,19)+'</span></div><div class="v">'+value+'</div><div class="d">'+(detail||'')+'</div></div>';
+}
+
+/* ---------- pages: overview ---------- */
+function pageOverview(){
+  const B=fBills(),A=fSheets();
+  if(!B.length&&!A.length)return emptyBox();
+  const ms=monthsList();
+  const tot=sum(B,b=>b.amt);
+  const tm={};ms.forEach(m=>tm[m]=sum(B.filter(b=>b.per===m),b=>b.amt));
+  const last=ms.at(-1),prev=ms.at(-2),ch=prev&&tm[prev]?(tm[last]-tm[prev])/tm[prev]*100:null;
+  const V=A.map(a=>({a,v:validate(a)}));
+  const rq=sum(V,x=>x.v.rq),ac=sum(V,x=>x.v.ac),fill=pct(ac,rq);
+  const short_=sum(A,a=>sum(S.settings.positions,p=>Math.max(0,(a.rows[p]||[0,0])[0]-(a.rows[p]||[0,0])[1])));
+  const failV=V.filter(x=>x.v.st==='un');
+  const bd={};V.forEach(x=>{const k=x.a.date;(bd[k]=bd[k]||[0,0]);bd[k][0]+=x.v.ac;bd[k][1]+=x.v.rq});
+  const dates=Object.keys(bd).sort(),pts=dates.map(k=>[k,pct(bd[k][0],bd[k][1])]);
+  const d={};ms.forEach(m=>{d[m]={};S.settings.cats.forEach(c=>d[m][c]=sum(B.filter(b=>b.per===m&&b.cat===c),b=>b.amt))});
+  const bc=S.settings.cats.map(c=>[c,sum(B.filter(b=>b.cat===c),b=>b.amt)]);
+  const recent=[...B].sort((a,b)=>b.per.localeCompare(a.per)).slice(0,6);
+  const uns=V.filter(x=>x.v.st==='un').sort((a,b)=>b.a.date.localeCompare(a.a.date)).slice(0,6);
+  return filterBar(false)
+   +'<div class="grid g4">'
+   +kpi('Total spend',peso(tot),B.length+' bills over '+ms.length+' months','wallet','var(--c1)')
+   +kpi('Manning fill rate',fill.toFixed(1)+'%',fillPill(fill)+' <span class="mu">'+ac+' of '+rq+' required</span>','users','var(--c3)')
+   +kpi('Unsigned sheets',failV.length,failV.length?'missing at least one signature':'all sheets fully signed','alert','var(--c5)')
+   +kpi('Headcount shortage',short_,'across '+A.length+' shift sheets','clock','var(--c4)')
+   +'</div>'
+   +'<div class="grid g21"><div class="card"><h3>Monthly cost trend</h3><div class="sub">Stacked by category</div>'+stackBars(ms,d)+'<div class="lg" style="display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--mut)">'+S.settings.cats.map(c=>'<span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;background:'+CATCOLOR[c]+'"></b>'+c+'</span>').join('')+'</div></div>'
+   +'<div class="card"><h3>Cost mix</h3><div class="sub">Share by category</div>'+donut(bc,tot)+'<div style="text-align:center;font-size:11.5px;color:var(--mut);margin-top:8px">'+bc.map(([c,v])=>esc(c)+' '+Math.round(pct(v,tot))+'%').join(' · ')+'</div></div></div>'
+   +'<div class="grid g2"><div class="card"><h3>Daily manning fill rate</h3><div class="sub">All plants in view · red dots below the 95% target</div>'+(pts.length?areaLine(pts,95):'<div class="empty">No attendance data.</div>')+'</div>'
+   +'<div class="card"><h3>Plant scorecard</h3><div class="sub">Required vs actual manning</div>'+plantScorecard(V)+'</div></div>'
+   +'<div class="grid g2"><div class="card"><h3>Recent bills</h3><div class="sub">Latest by billing period</div><div class="sc"><table class="t"><thead><tr><th>Category</th><th>Plant</th><th>Period</th><th class="r">Amount</th></tr></thead><tbody>'+recent.map(r=>'<tr><td><span class="pill p-n" style="color:'+CATCOLOR[r.cat]+'">'+esc(r.cat)+'</span></td><td>'+esc(r.plant)+'</td><td>'+ml(r.per)+'</td><td class="r"><b>'+peso(r.amt)+'</b></td></tr>').join('')+'</tbody></table></div></div>'
+   +'<div class="card"><h3>Needs attention</h3><div class="sub">Unsigned or short-staffed shifts</div>'+(uns.length?uns.map(x=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>'+esc(x.a.plant)+'</b> · '+x.a.date.slice(5)+' · '+esc(x.a.shift)+' <span class="mu">'+esc(x.a.agency)+'</span><div class="iss '+(x.v.st==='un'?'b':'w')+'" style="margin-top:3px">'+x.v.iss.slice(0,2).map(i=>esc(i[1])).join(' · ')+'</div></div>').join(''):'<div class="mu" style="padding:10px 0">All shift sheets are signed and full.</div>')+'</div></div>';
+}
+
+/* ---------- pages: cost ---------- */
+function pageCost(){
+  const X=fBills();if(!S.bills.length)return emptyBox('No billing records yet.','Add a bill from Data Entry.');
+  if(!X.length)return filterBar(false)+'<div class="card empty">No bills match these filters.</div>';
+  const ms=[...new Set(X.map(b=>b.per))].sort(),d={};
+  ms.forEach(m=>{d[m]={};S.settings.cats.forEach(c=>d[m][c]=sum(X.filter(b=>b.per===m&&b.cat===c),b=>b.amt))});
+  const tm=m=>sum(S.settings.cats,c=>d[m][c]),tot=sum(X,b=>b.amt),last=ms.at(-1),prev=ms.at(-2),ch=prev&&tm(prev)?(tm(last)-tm(prev))/tm(prev)*100:null;
+  const bc=S.settings.cats.map(c=>[c,sum(X.filter(b=>b.cat===c),b=>b.amt)]);
+  const top=[...bc].sort((a,b)=>b[1]-a[1])[0]||['—',0];
+  const bp=S.settings.plants.map(p=>[p,sum(X.filter(b=>b.plant===p),b=>b.amt)]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
+  const hmx=Math.max(1,...S.settings.plants.map(p=>Math.max.apply(null,ms.map(m=>sum(X.filter(b=>b.plant===p&&b.per===m),b=>b.amt)))));
+  const A=fSheets(),hc=A.length?sum(A,a=>sum(S.settings.positions,p=>a.rows[p][1]))/A.length:0;
+  const AP=S.settings.attPlants;
+  const mp=sum(X.filter(b=>b.cat==='Manpower Agency'&&AP.includes(b.plant)),b=>b.amt);
+  const nPlant=new Set(X.filter(b=>b.cat==='Manpower Agency'&&AP.includes(b.plant)).map(b=>b.plant)).size||1;
+  const mpm=mp/ms.length/nPlant;
+  return filterBar(false)
+   +'<div class="grid g4">'
+   +kpi('Total spend',peso(tot),X.length+' bills · '+ms.length+' months','wallet','var(--c1)')
+   +kpi(ml(last),peso(tm(last)),ch==null?'—':'<span class="'+(ch>0?'up':'dn')+'">'+(ch>0?'▲ ':'▼ ')+Math.abs(ch).toFixed(1)+'%</span> vs '+ml(prev),'trend','var(--c2)')
+   +kpi('Biggest category',top[0],Math.round(pct(top[1],tot))+'% of spend','grid','var(--c4)')
+   +kpi('Manpower cost / head',hc?peso(mpm/(hc*S.settings.shifts.length)):'—','monthly agency cost per plant ÷ crew across shifts','users','var(--c5)')
+   +'</div>'
+   +'<div class="grid g21"><div class="card"><h3>Monthly cost trend</h3><div class="sub">Stacked by category</div>'+stackBars(ms,d)+'</div>'
+   +'<div class="card"><h3>Cost mix</h3><div class="sub">Share by category</div>'+donut(bc,tot)+'<div style="text-align:center;font-size:11.5px;color:var(--mut);margin-top:8px">'+bc.map(([c,v])=>esc(c)+' '+Math.round(pct(v,tot))+'%').join(' · ')+'</div></div></div>'
+   +'<div class="grid g2"><div class="card"><h3>Spend by plant</h3><div class="sub">Highest to lowest</div>'+(bp.length?bp.map(([p,v])=>hbar(p,v,bp[0][1],peso(v))).join(''):'<div class="empty">No data.</div>')+'</div>'
+   +'<div class="card"><h3>Plant × month heatmap</h3><div class="sub">Darker = higher spend</div><div class="sc"><table class="heat"><thead><tr><th></th>'+ms.map(m=>'<th class="ax">'+MN[+m.slice(5)-1]+'</th>').join('')+'</tr></thead><tbody>'+S.settings.plants.map(p=>'<tr><td style="white-space:nowrap;font-size:12px;padding-right:8px"><b>'+esc(p)+'</b></td>'+ms.map(m=>{const v=sum(X.filter(b=>b.plant===p&&b.per===m),b=>b.amt);return '<td><div title="'+esc(p)+' '+ml(m)+': '+peso(v)+'" style="background:color-mix(in srgb,var(--c2) '+((.08+.72*v/hmx)*100).toFixed(0)+'%,transparent);color:'+(v/hmx>.55?'#fff':'inherit')+'">'+shortv(v)+'</div></td>'}).join('')+'</tr>').join('')+'</tbody></table></div></div></div>'
+   +'<div class="card"><h3>Monthly summary</h3><div class="sub">Per category with month-on-month change</div><div class="sc"><table class="t"><thead><tr><th>Month</th>'+S.settings.cats.map(c=>'<th class="r">'+esc(c)+'</th>').join('')+'<th class="r">Total</th><th class="r">MoM</th></tr></thead><tbody>'+[...ms].reverse().map((m,i,a)=>{const t=tm(m),pv=a[i+1]?tm(a[i+1]):0;return '<tr><td><b>'+ml(m)+'</b></td>'+S.settings.cats.map(c=>'<td class="r">'+peso(d[m][c])+'</td>').join('')+'<td class="r"><b>'+peso(t)+'</b></td><td class="r '+(t>pv?'up':'dn')+'">'+(pv?(t>pv?'▲ ':'▼ ')+Math.abs((t-pv)/pv*100).toFixed(1)+'%':'—')+'</td></tr>'}).join('')+'</tbody></table></div></div>';
+}
+
+/* ---------- shared: plant scorecard ---------- */
+function plantScorecard(V){
+  const AP=S.settings.attPlants;
+  const bp=AP.map(p=>{const x=V.filter(y=>y.a.plant===p);const sh=sum(x,y=>sum(S.settings.positions,q=>Math.max(0,(y.a.rows[q]||[0,0])[0]-(y.a.rows[q]||[0,0])[1])));return{p:p,n:x.length,rq:sum(x,y=>y.v.rq),ac:sum(x,y=>y.v.ac),fl:x.filter(y=>y.v.st==='un').length,sh:sh};}).filter(x=>x.n);
+  if(!bp.length)return '<div class="empty">No attendance data.</div>';
+  return '<div class="sc"><table class="t"><thead><tr><th>Plant</th><th class="r">Req.</th><th class="r">Actual</th><th>Fill</th><th class="r">Short</th><th class="r">Unsigned</th></tr></thead><tbody>'+bp.sort((a,b)=>pct(a.ac,a.rq)-pct(b.ac,b.rq)).map(x=>'<tr><td><b>'+esc(x.p)+'</b></td><td class="r">'+x.rq+'</td><td class="r">'+x.ac+'</td><td>'+fillPill(pct(x.ac,x.rq))+'</td><td class="r">'+x.sh+'</td><td class="r">'+(x.fl?'<span class="pill p-b">'+x.fl+'</span>':'—')+'</td></tr>').join('')+'</tbody></table></div>';
+}
+
+/* ---------- pages: attendance ---------- */
+function pageAttendance(){
+  const A=fSheets();
+  if(!S.sheets.length)return emptyBox('No attendance sheets yet.','Add a manning summary sheet from Data Entry.');
+  if(!A.length)return filterBar(true)+'<div class="card empty">No shifts match these filters.</div>';
+  const V=A.map(a=>({a,v:validate(a)}));
+  const rq=sum(V,x=>x.v.rq),ac=sum(V,x=>x.v.ac),fill=pct(ac,rq);
+  const short_=sum(A,a=>sum(S.settings.positions,p=>Math.max(0,(a.rows[p]||[0,0])[0]-(a.rows[p]||[0,0])[1])));
+  const failV=V.filter(x=>x.v.st==='un');
+  const bd={};V.forEach(x=>{const k=x.a.date;(bd[k]=bd[k]||[0,0]);bd[k][0]+=x.v.ac;bd[k][1]+=x.v.rq});
+  const dates=Object.keys(bd).sort(),pts=dates.map(k=>[k,pct(bd[k][0],bd[k][1])]);
+  const bpos=S.settings.positions.map(p=>[p,sum(A,a=>(a.rows[p]||[0,0])[0]),sum(A,a=>(a.rows[p]||[0,0])[1])]).filter(x=>x[1]);
+  const fl=V.filter(x=>x.v.st==='un').sort((a,b)=>b.a.date.localeCompare(a.a.date)).slice(0,8);
+  return filterBar(true)
+   +'<div class="grid g4">'
+   +kpi('Manning fill rate',fill.toFixed(1)+'%',fillPill(fill)+' <span class="mu">'+ac+' of '+rq+' required</span>','trend','var(--c3)')
+   +kpi('Headcount shortage',short_,'across '+A.length+' shifts','alert','var(--c5)')
+   +kpi('Signed sheets',Math.round(pct(A.length-failV.length,A.length))+'%',(A.length-failV.length)+' of '+A.length+' sheets','check','var(--ok)')
+   +kpi('Unsigned sheets',failV.length,failV.length?'missing at least one signature':'all complete','file','var(--bad)')
+   +'</div>'
+   +'<div class="grid g21"><div class="card"><h3>Daily fill rate</h3><div class="sub">Actual ÷ required · red dots below 95%</div>'+(pts.length?areaLine(pts,95):'<div class="empty">No data.</div>')+'</div>'
+   +'<div class="card"><h3>Fill rate by position</h3><div class="sub">Where the gaps are</div>'+(bpos.length?bpos.map(([p,r,a])=>hbar(p,pct(a,r),100,pct(a,r).toFixed(0)+'%',fillColor(pct(a,r)))).join(''):'<div class="empty">No data.</div>')+'</div></div>'
+   +'<div class="grid g2"><div class="card"><h3>Plant scorecard</h3><div class="sub">Required vs actual manning</div>'+plantScorecard(V)+'</div>'
+   +'<div class="card"><h3>Unsigned sheets</h3><div class="sub">Latest first</div>'+(fl.length?fl.map(x=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>'+esc(x.a.plant)+'</b> · '+x.a.date.slice(5)+' · '+esc(x.a.shift)+'<div class="iss b" style="margin-top:2px">Missing: '+x.v.iss.filter(i=>i[1].indexOf('Unsigned')===0).map(i=>esc(i[1].slice(10))).join(' · ')+'</div><button class="btn g s" data-act="sheet-edit" data-id="'+x.a.id+'" style="margin-top:6px">'+icon('edit',14)+' Open</button></div>').join(''):'<div class="mu" style="padding:10px 0">All sheets are signed.</div>')+'</div></div>'
+   +tracker()
+   +employee();
+}
+
+/* ---------- shift tracker ---------- */
+function tracker(){
+  const pls=filters.plant==='all'?S.settings.attPlants:[filters.plant].filter(p=>S.settings.attPlants.includes(p));
+  const ds=[...new Set(S.sheets.map(s=>s.date))].sort().slice(-7);
+  let exp=0,got=0;
+  const rows=pls.map(pl=>'<tr><td style="white-space:nowrap"><b>'+esc(pl)+'</b></td>'+ds.map(d=>'<td style="border-left:1px solid var(--line);text-align:center">'+S.settings.shifts.map((sh,i)=>{exp++;const r=S.sheets.find(s=>s.plant===pl&&s.date===d&&s.shift===sh);const ok=r&&validate(r).st==='ok';if(ok)got++;
+    return '<span class="tk" title="'+esc(pl)+' '+d+' '+esc(sh)+': '+(r?(ok?'Validated':'Uploaded but unsigned'):'NOT SUBMITTED')+'" style="'+(ok?'background:var(--ok);color:#fff':'border:1px dashed var(--bad);color:var(--bad)')+'" data-act="open-report" data-plant="'+esc(pl)+'" data-date="'+d+'" data-shift="'+esc(sh)+'">'+(i+1)+'</span>'}).join('')+'</td>').join('')+'</tr>').join('');
+  if(!ds.length)return '<div class="card"><h3>Shift report tracker</h3><div class="sub">No shifts recorded yet.</div></div>';
+  return '<div class="card" style="margin-bottom:16px"><h3>Shift report tracker</h3><div class="sub">One manning summary report per plant, per shift · 1 = First, 2 = Second · a box turns green only when the sheet is fully signed</div><div class="sc"><table class="t"><thead><tr><th>Plant</th>'+ds.map(d=>'<th class="ax" style="text-align:center;border-left:1px solid var(--line)">'+d.slice(5)+'</th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:10px"><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok);margin-right:5px"></b>Validated</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1px dashed var(--bad);margin-right:5px"></b>Not submitted</span><span style="margin-left:auto"><b>'+got+'/'+exp+'</b> validated ('+(exp?Math.round(pct(got,exp)):0)+'%)</span></div></div>';
+}
+
+/* ---------- employee attendance ---------- */
+function employee(){
+  if(!eg)eg={plant:S.settings.attPlants[0],shift:'all',view:'monthly',ym:monthsList().at(-1)||curMonth(),wk:sun(today()),sort:'low'};
+  if(!S.sheets.some(s=>s.ros&&s.ros.length))return '<div class="card"><h3>Employee attendance</h3><div class="sub">Add a roster (names) to a sheet to see per-employee attendance.</div></div>';
+  const mo=eg.view==='monthly';
+  const days=mo?Array.from({length:dim(eg.ym)},(_,i)=>eg.ym+'-'+pad(i+1)):Array.from({length:7},(_,i)=>addDay(eg.wk,i));
+  const d0=days[0],d1=days.at(-1),w=mo?22:58;
+  const L=S.sheets.filter(s=>s.plant===eg.plant&&(eg.shift==='all'||s.shift===eg.shift)&&s.date>=d0&&s.date<=d1),has=new Set(L.map(s=>s.date)),map={};
+  L.forEach(s=>(s.ros||[]).forEach(r=>{const e=map[r.n]=map[r.n]||{n:r.n,p:r.p,sh:s.shift,d:{},P:0,A:0,Lv:0};if(e.d[s.date]===undefined)e.d[s.date]=r.a;if(r.a===1)e.P++;else if(r.a===0)e.A++;else e.Lv++}));
+  const E=Object.values(map);E.forEach(e=>e.r=e.P+e.A?e.P/(e.P+e.A)*100:100);
+  E.sort(eg.sort==='low'?(a,b)=>a.r-b.r||a.n.localeCompare(b.n):eg.sort==='pos'?(a,b)=>S.settings.positions.indexOf(a.p)-S.settings.positions.indexOf(b.p)||a.n.localeCompare(b.n):(a,b)=>a.n.localeCompare(b.n));
+  const P=sum(E,e=>e.P),A=sum(E,e=>e.A),Lv=sum(E,e=>e.Lv),g=agg(L);
+  const CO={1:'var(--ok)',0:'var(--bad)',2:'#3b82f6'},SY={1:'✔',0:'✕',2:'L'},SN={1:'Present',0:'Absent',2:'Leave'};
+  const cell=(e,d)=>{const v=e.d[d];return v!==undefined?'<div class="ec" style="width:'+w+'px;background:'+CO[v]+'" title="'+esc(e.n)+' · '+fD(d)+' · '+SN[v]+'">'+SY[v]+'</div>':has.has(d)?'<div class="ec" style="width:'+w+'px;background:var(--line)" title="'+esc(e.n)+' · '+fD(d)+' · Day off"></div>':'<div class="ec" style="width:'+w+'px;border:1px dashed var(--line)" title="No report"></div>'};
+  const tot=(lab,f,c)=>'<tr><td class="n"><b>'+lab+'</b></td>'+days.map(d=>'<td'+(dow(d)===0&&mo?' class="sn"':'')+'><div class="ec" style="width:'+w+'px;color:'+c+';font-weight:800;background:none">'+(has.has(d)?f(d):'')+'</div></td>').join('')+'</tr>';
+  let sumT;
+  if(mo){const rows=[];for(let d=sun(d0),i=1;d<=d1;d=addDay(d,7),i++){const a=d<d0?d0:d,b=addDay(d,6)>d1?d1:addDay(d,6);rows.push(srow('Week '+i,fD(a)+' – '+fD(b),agg(L.filter(s=>s.date>=a&&s.date<=b))))}sumT=rows.join('')+srow('Month total',ml(eg.ym),g,1)}
+  else sumT=days.map(d=>srow(DW[dow(d)],fD(d),agg(L.filter(s=>s.date===d)))).join('')+srow('Week total',fD(d0)+' – '+fD(d1),g,1);
+  const lbl=mo?ml(eg.ym):fD(d0)+' – '+fD(d1);
+  return '<div class="card"><h3>Employee attendance · '+(mo?'monthly':'weekly')+'</h3><div class="sub">Each row is an employee. Sort by lowest attendance to spot problems fast.</div>'
+   +'<div class="toolbar"><div class="fgroup"><select data-eg="view"><option value="monthly" '+(mo?'selected':'')+'>Monthly</option><option value="weekly" '+(!mo?'selected':'')+'>Weekly</option></select>'
+   +'<select data-eg="plant">'+S.settings.attPlants.map(p=>'<option '+(p===eg.plant?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select>'
+   +'<select data-eg="shift"><option value="all">All shifts</option>'+S.settings.shifts.map(s=>'<option '+(s===eg.shift?'selected':'')+'>'+esc(s)+'</option>').join('')+'</select>'
+   +'<select data-eg="sort"><option value="low" '+(eg.sort==='low'?'selected':'')+'>Lowest attendance first</option><option value="name" '+(eg.sort==='name'?'selected':'')+'>Name A–Z</option><option value="pos" '+(eg.sort==='pos'?'selected':'')+'>By position</option></select></div>'
+   +'<div class="fgroup"><button class="btn g s" data-act="eg-nav" data-n="-1">◀</button><b style="font-size:13px">'+lbl+'</b><button class="btn g s" data-act="eg-nav" data-n="1">▶</button></div></div>'
+   +(E.length?'<div class="grid g4" style="margin-bottom:10px">'
+   +kpi('Manpower '+(mo?'this month':'this week'),P,'man-days present · avg '+(has.size?Math.round(P/has.size):0)+' per day','users','var(--c1)')
+   +kpi('Required vs actual',(g.rq?pct(g.ac,g.rq).toFixed(1):'—')+'%',g.ac+' of '+g.rq+' man-shifts','trend','var(--c3)')
+   +kpi('Absences · Leave',A+' · '+Lv,(P+A?'attendance rate '+pct(P,P+A).toFixed(1)+'%':''),'cal','var(--c5)')
+   +kpi('Employees tracked',E.length,E.filter(e=>e.r<90).length+' below 90% attendance','users','var(--c4)')
+   +'</div>'
+   +'<div class="sc" style="max-height:560px;overflow:auto"><table class="eg"><thead><tr><th class="n">Employee</th>'+days.map(d=>'<th'+(dow(d)===0&&mo?' class="sn"':'')+'>'+(mo?'<div>'+ +d.slice(8)+'</div><div class="ax">'+DW[dow(d)][0]+'</div>':'<div>'+DW[dow(d)]+'</div><div class="ax">'+fD(d)+'</div>')+'</th>').join('')+'<th>P</th><th>A</th><th>L</th><th>Rate</th></tr></thead><tbody>'
+   +E.map(e=>'<tr><td class="n"><b>'+esc(e.n)+'</b><div class="ax">'+esc(e.p)+' · '+esc(e.sh)+'</div></td>'+days.map(d=>'<td'+(dow(d)===0&&mo?' class="sn"':'')+'>'+cell(e,d)+'</td>').join('')+'<td>'+e.P+'</td><td class="'+(e.A?'up':'')+'">'+e.A+'</td><td>'+e.Lv+'</td><td style="padding:1px 6px">'+fillPill(e.r)+'</td></tr>').join('')
+   +tot('Total present',d=>E.filter(e=>e.d[d]===1).length,'var(--ok)')+tot('Absent',d=>E.filter(e=>e.d[d]===0).length,'var(--bad)')
+   +'</tbody></table></div>'
+   +'<div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:10px"><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok);margin-right:5px"></b>Present</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--bad);margin-right:5px"></b>Absent</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#3b82f6;margin-right:5px"></b>Leave</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--line);margin-right:5px"></b>Day off</span></div>'
+   +'<h3 style="margin-top:18px">'+(mo?'Weekly summary (Sunday to Saturday)':'Daily summary')+'</h3><div class="sc"><table class="t"><thead><tr><th>'+(mo?'Week':'Day')+'</th><th>Dates</th><th class="r">Required</th><th class="r">Actual</th><th>Fill</th><th class="r">Absent</th><th class="r">Leave</th><th class="r">Avg / day</th><th class="r">Signed</th></tr></thead><tbody>'+sumT+'</tbody></table></div>'
+   :'<div class="empty">No roster data for this plant, shift and period.</div>')
+   +'</div>';
+}
+function agg(L){const V=L.map(s=>validate(s));return{rq:sum(V,v=>v.rq),ac:sum(V,v=>v.ac),ab:sum(L,s=>(s.ros||[]).filter(r=>r.a===0).length),lv:sum(L,s=>(s.ros||[]).filter(r=>r.a===2).length),n:L.length,sg:V.filter(v=>v.st==='ok').length,dn:new Set(L.map(s=>s.date)).size}}
+const srow=(a,b,x,t)=>'<tr'+(t?' class="tot"':'')+'><td><b>'+esc(a)+'</b></td><td class="mu">'+esc(b)+'</td><td class="r">'+x.rq+'</td><td class="r"><b>'+x.ac+'</b></td><td>'+(x.rq?fillPill(pct(x.ac,x.rq)):'—')+'</td><td class="r">'+x.ab+'</td><td class="r">'+x.lv+'</td><td class="r">'+(x.dn?Math.round(x.ac/x.dn):'—')+'</td><td class="r">'+(x.n?x.sg+'/'+x.n:'—')+'</td></tr>';
+
+/* ---------- pages: shift reports ---------- */
+const dts=()=>[...new Set(S.sheets.map(s=>s.date))].sort();
+const getRec=(pl,d,sh)=>S.sheets.find(s=>s.plant===pl&&s.date===d&&s.shift===sh);
+let rp=null;
+function pageReports(){
+  if(!S.sheets.length)return emptyBox('No shift reports yet.','Add an attendance sheet from Data Entry.');
+  if(!rp)rp={plant:S.settings.attPlants[0],date:dts().at(-1)||today(),shift:S.settings.shifts[0]};
+  const rec=getRec(rp.plant,rp.date,rp.shift),v=rec&&validate(rec),plan=planFor(rp.plant,rp.shift);
+  const all=S.settings.attPlants.map(pl=>{const r=getRec(pl,rp.date,rp.shift);return{pl,r,v:r&&validate(r),plan:planFor(pl,rp.shift)}});
+  return '<div class="toolbar no-print"><div class="fgroup">'
+   +'<select data-rp="plant">'+S.settings.attPlants.map(p=>'<option '+(p===rp.plant?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select>'
+   +'<button class="btn g" data-act="rp-step" data-n="-1">◀ Prev shift</button>'
+   +'<input type="date" value="'+rp.date+'" data-rp="date">'
+   +'<select data-rp="shift">'+S.settings.shifts.map(s=>'<option '+(s===rp.shift?'selected':'')+'>'+esc(s)+'</option>').join('')+'</select>'
+   +'<button class="btn g" data-act="rp-step" data-n="1">Next shift ▶</button></div>'
+   +'<div class="fgroup"><button class="btn g" data-act="print">'+icon('print',15)+' Print</button><button class="btn" data-act="print-save">'+icon('download',15)+' Save as PDF</button></div></div>'
+   +reportSheet(rp.plant,rp.date,rp.shift,rec,v,plan)
+   +'<div class="card no-print" style="margin-top:16px"><h3>Shift roll-up · '+rp.date+' · '+esc(rp.shift)+' shift</h3><div class="sub">All plants for this shift. Open a plant report.</div><div class="sc"><table class="t"><thead><tr><th>Plant</th><th>Agency</th><th class="r">Required</th><th class="r">Actual</th><th>Fill</th><th>Remarks</th><th></th></tr></thead><tbody>'+all.map(({pl,r,v,plan})=>'<tr><td><b>'+esc(pl)+'</b></td><td class="mu">'+(r?esc(r.agency):'—')+'</td><td class="r">'+(r?v.rq:sum(S.settings.positions,p=>plan[p]))+'</td><td class="r">'+(r?v.ac:'—')+'</td><td>'+(r&&v.rq?fillPill(pct(v.ac,v.rq)):'—')+'</td><td>'+(r?badge(v.st):'<span class="pill p-b">Not submitted</span>')+'</td><td><button class="btn g s" data-act="rp-open" data-plant="'+esc(pl)+'">'+(pl===rp.plant?'Viewing':'Open')+'</button></td></tr>').join('')
+   +'<tr class="tot"><td colspan="2">Total</td><td class="r">'+sum(all,x=>x.r?x.v.rq:0)+'</td><td class="r">'+sum(all,x=>x.r?x.v.ac:0)+'</td><td colspan="3" class="mu">'+all.filter(x=>x.r).length+' of '+all.length+' plants reported</td></tr></tbody></table></div></div>';
+}
+function planFor(pl,sh){const x=S.sheets.filter(s=>s.plant===pl&&s.shift===sh).sort((a,b)=>b.date.localeCompare(a.date))[0];return Object.fromEntries(S.settings.positions.map(p=>[p,x&&x.rows[p]?x.rows[p][0]:(S.settings.req[p]||0)]))}
+function reportSheet(pl,date,sh,rec,v,plan){
+  const rows=S.settings.positions.map(p=>({p,rq:rec?(rec.rows[p]||[0,0])[0]:plan[p],ac:rec?(rec.rows[p]||[0,0])[1]:null})).filter(r=>rec?(r.rq||r.ac):r.rq);
+  const tr=sum(rows,r=>r.rq);
+  return '<div class="paper" id="rpt">'
+   +'<div class="hd"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;align-items:center"><b>MANNING SUMMARY REPORT</b><span style="opacity:.9;font-size:11.5px">Vienovo Philippines, Inc. · PRIJ Manpower Services</span></div></div>'
+   +'<div class="infogrid">'
+   +'<div><span class="mu">Plant / Site</span><br><b>'+esc(pl)+'</b></div>'
+   +'<div><span class="mu">Date</span><br><b>'+date+'</b></div>'
+   +'<div><span class="mu">Shift</span><br><b>'+esc(sh)+'</b> '+S.settings.shifts.map(s=>esc(s)+' '+(s===sh?'☑':'☐')).join(' ')+'</div>'
+   +'<div><span class="mu">Agency</span><br><b>'+(rec?esc(rec.agency):'—')+'</b></div></div>'
+   +'<div class="sc"><table class="t"><thead><tr><th>Position</th><th class="r">Required</th><th class="r">Actual</th><th class="r">Gap</th><th>Status</th></tr></thead><tbody>'
+   +rows.map(r=>{const g=rec?r.ac-r.rq:null,nm=rec&&rec.ros?rec.ros.filter(x=>x.p===r.p):[];return '<tr><td>'+esc(r.p)+(nm.length?'<div class="ax" style="color:var(--mut)">'+nm.map(x=>'<span style="'+(x.a===0?'color:var(--bad);text-decoration:line-through':x.a===2?'color:#3b82f6':'')+'">'+esc(x.n)+'</span>').join(', ')+'</div>':'')+'</td><td class="r">'+r.rq+'</td><td class="r">'+(rec?r.ac:'▢')+'</td><td class="r '+(g<0?'up':'')+'"><b>'+(g?(g>0?'+':'')+g:rec?'—':'')+'</b></td><td>'+(rec?'<span class="pill '+(g<0?'p-b':g>0?'p-w':'p-ok')+'">'+(g<0?'Short':g>0?'Over':'Full')+'</span>':'')+'</td></tr>'}).join('')
+   +'<tr class="tot"><td>GRAND TOTAL MANNING</td><td class="r">'+tr+'</td><td class="r">'+(rec?v.ac:'▢')+'</td><td class="r '+(rec&&v.ac<tr?'up':'')+'"><b>'+(rec?((v.ac-tr)||'—'):'')+'</b></td><td>'+(rec?fillPill(tr?pct(v.ac,tr):0):'')+'</td></tr></tbody></table></div>'
+   +'<div class="sig">'+[['prep','Prepared by','PRIJ Coordinator'],['check','Checked by','PRIJ Admin Staff'],['att','Attested by','Vienovo Warehouse Coordinator'],['con','Concurred by','Vienovo Warehouse Team Leader']].map(([k,a,b])=>'<div><b>'+a+'</b> '+(rec?(rec.sig[k]?'<span class="dn">Signed</span>':'<span class="up">Unsigned</span>'):'')+'<div class="mu">'+b+'</div></div>').join('')+'</div>'
+   +(rec?'<div style="margin-top:14px">'+badge(v.st)+v.iss.map(i=>'<div class="iss '+(i[0]==='b'?'b':'w')+'">'+(i[0]==='b'?'⛔':'⚠')+' '+esc(i[1])+'</div>').join('')+'</div>':'<div class="card" style="margin:14px 0 0;box-shadow:none;background:var(--soft)">No report submitted yet. This sheet is pre-filled with the standard required manning for '+esc(pl)+', '+esc(sh)+' shift. Print it, fill in the actual, get it signed, then record it in Data Entry.</div>')
+   +'<div class="sub" style="margin:14px 0 0">Generated by PCMD · '+new Date().toLocaleString('en-PH')+'</div></div>';
+}
+
+/* ---------- pages: records ---------- */
+let rs='b';
+function pageRecords(){
+  const head='<div class="toolbar"><div class="fgroup"><select data-sub="rs"><option value="b" '+(rs==='b'?'selected':'')+'>Billing</option><option value="a" '+(rs==='a'?'selected':'')+'>Attendance</option></select>'+filterBar(rs==='a').replace(/^<div class="toolbar"><div class="fgroup">/,'').replace(/<\/div>.*$/,'')+'</div><div class="fgroup"><button class="btn g" data-act="csv" data-v="'+rs+'">'+icon('download',15)+' Export CSV</button></div></div>';
+  if(rs==='b'){
+    const X=fBills().sort((a,b)=>b.per.localeCompare(a.per)||a.plant.localeCompare(b.plant));
+    if(!S.bills.length)return head+emptyBox('No billing records yet.','Add a bill from Data Entry.');
+    return head+'<div class="card"><h3>Billing records</h3><div class="sub">'+X.length+' bills · '+peso(sum(X,b=>b.amt))+'</div><div class="sc"><table class="t"><thead><tr><th>Category</th><th>Plant</th><th>Vendor</th><th>Invoice</th><th>Period</th><th class="r">Amount</th><th></th></tr></thead><tbody>'+X.slice(0,lim).map(r=>'<tr><td><span class="pill p-n" style="color:'+CATCOLOR[r.cat]+'">'+esc(r.cat)+'</span></td><td>'+esc(r.plant)+'</td><td>'+esc(r.vendor)+'</td><td class="mu">'+esc(r.inv)+'</td><td>'+ml(r.per)+'</td><td class="r"><b>'+peso(r.amt)+'</b></td><td style="white-space:nowrap"><button class="x" data-act="bill-edit" data-id="'+r.id+'" title="Edit">'+icon('edit',14)+'</button> <button class="x" data-act="del" data-kind="bill" data-id="'+r.id+'" title="Delete">'+icon('trash',14)+'</button></td></tr>').join('')+'</tbody></table></div>'+more(X.length)+'</div>';
+  }
+  const X=fSheets().sort((a,b)=>b.date.localeCompare(a.date)||a.plant.localeCompare(b.plant));
+  if(!S.sheets.length)return head+emptyBox('No attendance sheets yet.','Add a manning summary sheet from Data Entry.');
+  const V=X.map(a=>({a,v:validate(a)}));
+  return head+'<div class="card"><h3>Attendance records · per shift</h3><div class="sub">'+X.length+' sheets · '+V.filter(x=>x.v.st==='un').length+' unsigned · click a row for the breakdown</div><div class="sc"><table class="t"><thead><tr><th>Date</th><th>Plant</th><th>Shift</th><th>Agency</th><th class="r">Req.</th><th class="r">Actual</th><th>Fill</th><th>Remarks</th><th></th></tr></thead><tbody>'+V.slice(0,lim).map(({a,v})=>'<tr style="cursor:pointer" data-act="row" data-id="'+a.id+'"><td>'+a.date+'</td><td><b>'+esc(a.plant)+'</b></td><td>'+esc(a.shift)+'</td><td class="mu">'+esc(a.agency)+'</td><td class="r">'+v.rq+'</td><td class="r">'+v.ac+'</td><td>'+(v.rq?fillPill(pct(v.ac,v.rq)):'—')+'</td><td>'+badge(v.st)+'</td><td style="white-space:nowrap"><button class="x" data-act="sheet-edit" data-id="'+a.id+'" title="Edit">'+icon('edit',14)+'</button> <button class="x" data-act="del" data-kind="sheet" data-id="'+a.id+'" title="Delete">'+icon('trash',14)+'</button></td></tr>'
+   +(open[a.id]?'<tr><td colspan="9" style="background:var(--soft)"><div class="grid g2" style="margin:0"><div class="sc"><table class="t"><thead><tr><th>Position</th><th class="r">Req.</th><th class="r">Actual</th><th class="r">Gap</th></tr></thead><tbody>'+S.settings.positions.filter(p=>a.rows[p]&&(a.rows[p][0]||a.rows[p][1])).map(p=>{const g=a.rows[p][1]-a.rows[p][0];return '<tr><td>'+esc(p)+'</td><td class="r">'+a.rows[p][0]+'</td><td class="r">'+a.rows[p][1]+'</td><td class="r '+(g<0?'up':'')+'"><b>'+(g||'—')+'</b></td></tr>'}).join('')+'</tbody></table></div><div><b style="font-size:12px">Sign-offs</b>'+SIGS.map(([k,l])=>'<div class="iss '+(a.sig[k]?'':'b')+'">'+(a.sig[k]?'✔ Signed':'✖ Unsigned')+' · '+esc(l)+'</div>').join('')+'<b style="font-size:12px">Validation notes</b>'+(v.iss.length?v.iss.map(i=>'<div class="iss '+(i[0]==='b'?'b':'w')+'">'+esc(i[1])+'</div>').join(''):'<div class="iss dn">All checks passed</div>')+(a.ros&&a.ros.length?'<div style="margin-top:8px">'+a.ros.map(r=>'<span class="pill" style="margin:2px;background:'+(r.a===1?'color-mix(in srgb,var(--ok) 16%,transparent)':r.a===0?'color-mix(in srgb,var(--bad) 15%,transparent)':'#3b82f622')+';color:'+(r.a===1?'var(--ok)':r.a===0?'var(--bad)':'#3b82f6')+'">'+esc(r.n)+'</span>').join('')+'</div>':'')+'<div class="fgroup" style="margin-top:10px"><button class="btn g s" data-act="open-report" data-plant="'+esc(a.plant)+'" data-date="'+a.date+'" data-shift="'+esc(a.shift)+'">'+icon('file',14)+' Shift report</button></div></div></div></td></tr>':'')
+   ).join('')+'</tbody></table></div>'+more(X.length)+'</div>';
+}
+const more=n=>n>lim?'<div style="text-align:center;padding:14px"><button class="btn g" data-act="more">Show more ('+(n-lim)+' left)</button></div>':'';
+
+/* ---------- pages: data entry ---------- */
+function pageEntry(){
+  const B=[...S.bills].sort((a,b)=>b.per.localeCompare(a.per)).slice(0,6);
+  const A=[...S.sheets].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,6);
+  return '<div class="grid g2">'
+   +'<div class="card"><div class="top" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><span class="kic" style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;background:var(--c1)">'+icon('wallet',20)+'</span></div><h3>Billing entry</h3><div class="sub">Electricity, water, fuel or manpower agency invoices.</div>'
+   +'<button class="btn block" data-act="bill-new">'+icon('plus',15)+' Add bill</button>'
+   +'<div style="margin-top:14px">'+(B.length?'<div class="sub" style="margin:8px 0 4px">Recent</div>'+B.map(b=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span><b>'+esc(b.plant)+'</b> <span class="mu">'+esc(b.cat)+' · '+ml(b.per)+'</span></span><span><b>'+peso(b.amt)+'</b> <button class="x" data-act="bill-edit" data-id="'+b.id+'" title="Edit">'+icon('edit',13)+'</button></span></div>').join(''):'<div class="mu" style="font-size:12.5px">No bills yet.</div>')+'</div></div>'
+   +'<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><span style="width:42px;height:42px;border-radius:12px;display:grid;place-items:center;color:#fff;background:var(--c3)">'+icon('users',20)+'</span></div><h3>Attendance sheet entry</h3><div class="sub">Record the per-shift manning summary report (required vs actual, roster and signatures).</div>'
+   +'<div class="fgroup"><button class="btn block" data-act="sheet-new" style="flex:1">'+icon('plus',15)+' Add attendance sheet</button><button class="btn g" data-act="print-format">'+icon('print',15)+' Blank format</button></div>'
+   +'<div style="margin-top:14px">'+(A.length?'<div class="sub" style="margin:8px 0 4px">Recent</div>'+A.map(a=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span><b>'+esc(a.plant)+'</b> <span class="mu">'+a.date+' · '+esc(a.shift)+'</span></span><span><button class="x" data-act="sheet-edit" data-id="'+a.id+'" title="Edit">'+icon('edit',13)+'</button></span></div>').join(''):'<div class="mu" style="font-size:12.5px">No sheets yet.</div>')+'</div></div></div>'
+   +'<div class="card"><h3>Standard attendance format</h3><div class="sub">Print one sheet per plant, per shift. Each scheduled employee is marked P (present), A (absent) or L (leave).</div>'
+   +'<div class="sc"><table class="t"><thead><tr><th>Position</th><th class="r">Default required</th><th>Verified by</th></tr></thead><tbody>'+S.settings.positions.map(p=>'<tr><td>'+esc(p)+'</td><td class="r">'+(S.settings.req[p]||0)+'</td><td class="mu">__________</td></tr>').join('')+'<tr class="tot"><td>GRAND TOTAL MANNING</td><td class="r">'+sum(S.settings.positions,p=>S.settings.req[p]||0)+'</td><td></td></tr></tbody></table></div></div>';
+}
+
+/* ---------- pages: settings ---------- */
+function pageSettings(){
+  const list=(k,l,att)=>'<div class="field"><label class="f">'+l+'</label><textarea data-setting="'+k+'" rows="3" style="width:100%">'+esc((att&&S.settings[k]||S.settings[k]||[]).join(', '))+'</textarea></div>';
+  return '<div class="grid g2">'
+   +'<div class="card"><h3>Company masters</h3><div class="sub">Comma or new-line separated. Changes apply immediately.</div>'
+   +list('plants','Plants (cost monitoring)')+list('attPlants','Plants (attendance)')+list('shifts','Shifts')+list('cats','Cost categories')+list('agencies','Manpower agencies')+'</div>'
+   +'<div class="card"><h3>Positions</h3><div class="sub">Production roles used on the manning sheet.</div>'+list('positions','Positions')+'</div>'
+   +'</div>'
+   +'<div class="card" style="margin-bottom:16px"><h3>Default required manning</h3><div class="sub">Pre-fills a new attendance sheet.</div><div class="grid g4" style="margin:0">'+S.settings.positions.map(p=>'<div class="field"><label class="f" title="'+esc(p)+'">'+esc(p)+'</label><input type="number" min="0" data-req="'+esc(p)+'" value="'+(S.settings.req[p]||0)+'"></div>').join('')+'</div></div>'
+   +'<div class="card"><h3>Data &amp; backup</h3><div class="sub">Everything is stored in this browser only. Export regularly.</div>'
+   +'<div class="fgroup"><button class="btn g" data-act="json">'+icon('download',15)+' Export backup (JSON)</button>'
+   +'<label class="btn g" style="cursor:pointer">'+icon('upload',15)+' Import backup<input type="file" accept="application/json" data-import hidden></label>'
+   +'<button class="btn g" data-act="sample">'+icon('refresh',15)+' Reload sample data</button>'
+   +'<button class="btn d" data-act="clear">'+icon('trash',15)+' Clear all data</button></div>'
+   +'<div class="sub" style="margin:14px 0 0">'+(S.sample?'Currently showing sample data.':'Holding your recorded data.')+' · '+S.bills.length+' bills · '+S.sheets.length+' sheets</div></div>';
+}
+
+/* ---------- empty state ---------- */
+function emptyBox(t,d){
+  return '<div class="card empty"><div class="big">'+icon('db',34)+'</div><b>'+(t||'No data yet')+'</b><p style="margin:6px 0 16px">'+(d||'Record a bill or attendance sheet, or preview with sample data.')+'</p><div class="fgroup" style="justify-content:center"><button class="btn" data-act="bill-new">'+icon('plus',15)+' Add bill</button><button class="btn a" data-act="sheet-new">'+icon('plus',15)+' Add attendance sheet</button><button class="btn g" data-act="sample">'+icon('refresh',15)+' Load sample data</button></div></div>';
+}
+
+/* ============================================================
+   MODALS  (bill + attendance entry)
+   ============================================================ */
+function readVal(el){if(el.type==='checkbox')return el.checked?1:0;if(el.type==='number')return el.value===''?null:+el.value;return el.value}
+function setPath(path,val){const parts=path.split('.');let o=draft.data;for(let i=0;i<parts.length-1;i++){o=o[parts[i]]=o[parts[i]]||{}}o[parts[parts.length-1]]=val}
+function syncActual(){const it=draft.data;if(!it.ros)return;S.settings.positions.forEach(p=>{const L=it.ros.filter(r=>r.p===p);if(L.length){it.rows[p]=it.rows[p]||[0,0];it.rows[p][1]=L.filter(r=>r.a===1).length}})}
+function startBill(id){
+  const src=id?S.bills.find(x=>x.id===id):{plant:'',cat:S.settings.cats[0],vendor:'',inv:'',per:curMonth(),amt:''};
+  draft={kind:'bill',id:id||null,data:JSON.parse(JSON.stringify(src))};renderModal();
+}
+function startSheet(id){
+  let d;
+  if(id)d=JSON.parse(JSON.stringify(S.sheets.find(x=>x.id===id)));
+  else d={plant:S.settings.attPlants[0],date:today(),shift:S.settings.shifts[0],agency:S.settings.agencies[0],rows:Object.fromEntries(S.settings.positions.map(p=>[p,[S.settings.req[p]||0,0]])),sig:{prep:0,check:0,att:0,con:0},decl:null,ros:[]};
+  draft={kind:'sheet',id:id||null,data:d};renderModal();
+}
+function renderModal(){
+  if(!draft){$('#modal').innerHTML='';return}
+  $('#modal').innerHTML='<div class="modal-bg" data-act="close-bg"><div class="modal" onclick="event.stopPropagation()"><div class="mh"><h3>'+(draft.kind==='bill'?'Billing entry':'Attendance sheet entry')+'</h3><button class="x" data-act="close">'+icon('x',15)+'</button></div><div class="mb">'+(draft.kind==='bill'?billForm():sheetForm())+'</div><div class="mf"><button class="btn g" data-act="close">Cancel</button><button class="btn a" data-act="save">Save</button></div></div></div>';
+}
+function billForm(){
+  const b=draft.data;
+  return '<div class="grid g2" style="margin:0"><div><div class="field"><label class="f">Plant</label><select data-k="plant"><option value="">Select…</option>'+S.settings.plants.map(o=>'<option '+(o===b.plant?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select></div>'
+   +'<div class="field"><label class="f">Category</label><select data-k="cat">'+S.settings.cats.map(o=>'<option '+(o===b.cat?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select></div>'
+   +'<div class="field"><label class="f">Vendor</label><input data-k="vendor" value="'+esc(b.vendor)+'" placeholder="Supplier / utility"></div></div>'
+   +'<div><div class="field"><label class="f">Invoice no.</label><input data-k="inv" value="'+esc(b.inv)+'" placeholder="INV-0000"></div>'
+   +'<div class="field"><label class="f">Billing period</label><input type="month" data-k="per" value="'+esc(b.per)+'"></div>'
+   +'<div class="field"><label class="f">Amount (₱)</label><input type="number" data-k="amt" value="'+(b.amt===''?'':b.amt)+'" placeholder="0"></div></div></div>'
+   +'<div class="iss w" style="margin-top:6px">'+icon('alert',15)+' Enter the total amount due as printed on the bill.</div>';
+}
+function sheetForm(){
+  const it=draft.data,v=validate(it);
+  return '<div class="toolbar" style="margin-bottom:12px"><div class="fgroup">'
+   +'<select data-k="plant"><option value="">Plant…</option>'+S.settings.plants.map(o=>'<option '+(o===it.plant?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'
+   +'<input type="date" data-k="date" value="'+esc(it.date)+'">'
+   +'<select data-k="shift">'+S.settings.shifts.map(o=>'<option '+(o===it.shift?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'
+   +'<input data-k="agency" value="'+esc(it.agency)+'" placeholder="Agency" style="min-width:180px">'
+   +'<label class="f" style="margin:0;display:flex;align-items:center;gap:6px">Declared total <input type="number" data-k="decl" style="width:80px" value="'+(it.decl==null?'':it.decl)+'"></label>'
+   +'</div>'+badge(v.st)+'</div>'
+   +'<div class="grid g21" style="margin:0"><div><div class="sc rv"><table class="t"><thead><tr><th>Position</th><th>Required</th><th>Actual</th><th>Gap</th></tr></thead><tbody>'
+   +S.settings.positions.map(p=>{const r=it.rows[p]||[0,0],g=r[1]-r[0];return '<tr><td>'+esc(p)+'</td><td><input type="number" min="0" data-k="rows.'+p+'.0" value="'+r[0]+'"></td><td><input type="number" min="0" data-k="rows.'+p+'.1" value="'+r[1]+'"></td><td class="'+(g<0?'up':g>0?'mu':'')+'"><b>'+(g?(g>0?'+':'')+g:'—')+'</b></td></tr>'}).join('')
+   +'<tr class="tot"><td>Grand total</td><td>'+v.rq+'</td><td>'+v.ac+'</td><td></td></tr></tbody></table></div></div>'
+   +'<div><b style="font-size:12px">Signatures</b><div class="sub" style="margin:4px 0 8px">Tick each signature that appears on the sheet.</div>'
+   +SIGS.map(([k,l])=>'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin:6px 0"><input type="checkbox" data-k="sig.'+k+'" '+(it.sig[k]?'checked':'')+'> '+esc(l)+'</label>').join('')
+   +'<div style="margin-top:12px">'+(v.iss.length?v.iss.map(i=>'<div class="iss '+(i[0]==='b'?'b':'w')+'">'+(i[0]==='b'?icon('alert',14):icon('alert',14))+' '+esc(i[1])+'</div>').join(''):'<div class="iss dn">'+icon('check',14)+' All checks passed</div>')+'</div></div></div>'
+   +'<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">Roster (names written on the sheet)</b><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
+   +(it.ros&&it.ros.length?'<div class="sc rv" style="margin-top:8px"><table class="t"><thead><tr><th>Position</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody>'+it.ros.map((r,i)=>'<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'"></td><td><select data-k="ros.'+i+'.a">'+[[1,'Present'],[0,'Absent'],[2,'Leave']].map(([v,l])=>'<option value="'+v+'" '+(v===r.a?'selected':'')+'>'+l+'</option>').join('')+'</select></td><td><button class="x" data-act="ros-del" data-i="'+i+'">'+icon('x',13)+'</button></td></tr>').join('')+'</tbody></table></div>':'<div class="mu" style="font-size:12.5px;margin-top:6px">Optional. Add names to build the employee attendance grid.</div>');
+}
+function closeModal(){$('#modal').innerHTML='';draft=null}
+function saveDraft(){
+  const it=draft.data;
+  if(!it.plant){toast('Select a plant');return}
+  if(draft.kind==='bill'){
+    if(!it.per){toast('Select a billing period');return}
+    if(draft.id)Object.assign(S.bills.find(x=>x.id===draft.id),it);
+    else S.bills.push(Object.assign({},it,{id:uid()}));
+  }else{
+    if(!/^\d{4}-\d\d-\d\d$/.test(it.date||'')){toast('Enter a valid date');return}
+    if(draft.id)Object.assign(S.sheets.find(x=>x.id===draft.id),it);
+    else S.sheets.push(Object.assign({},it,{id:uid()}));
+  }
+  S.sample=false;save();closeModal();render();toast('Saved');
+}
+
+/* ============================================================
+   EXPORTS
+   ============================================================ */
+function download(name,text,type){const b=new Blob([text],{type:type||'text/plain'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+function exportCSV(kind){
+  let rows,head;
+  if(kind==='b'){head=['Plant','Category','Vendor','Invoice','Period','Amount'];rows=fBills().map(b=>[b.plant,b.cat,b.vendor,b.inv,b.per,b.amt])}
+  else{head=['Date','Plant','Shift','Agency','Required','Actual',].concat(S.settings.positions.map(p=>p+' req'),S.settings.positions.map(p=>p+' actual'),['Fill %','Signed']);rows=fSheets().map(s=>{const v=validate(s);return [s.date,s.plant,s.shift,s.agency,v.rq,v.ac].concat(S.settings.positions.map(p=>(s.rows[p]||[0,0])[0]),S.settings.positions.map(p=>(s.rows[p]||[0,0])[1]),[v.rq?pct(v.ac,v.rq).toFixed(1):'',v.st==='ok'?'Yes':'No'])})}
+  const csv=[head].concat(rows).map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  download('pcmd-'+(kind==='b'?'billing':'attendance')+'-'+today()+'.csv',csv,'text/csv');
+}
+function exportJSON(){download('pcmd-backup-'+today()+'.json',JSON.stringify(S,null,2),'application/json')}
+function importJSON(file){const r=new FileReader();r.onload=()=>{try{const j=JSON.parse(r.result);if(!j||!j.settings)throw 0;S=j;save();render();toast('Backup imported')}catch(e){toast('Invalid backup file')}};r.readAsText(file)}
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('on'),2200)}
+function openReport(pl,d,sh){rp={plant:pl,date:d,shift:sh};nav='reports';closeNav();render()}
+
+function act(a,ds){
+  switch(a){
+    case 'nav-open':$('#app').classList.add('nav-open');break;
+    case 'nav-close':$('#app').classList.remove('nav-open');break;
+    case 'theme':toggleTheme();break;
+    case 'go':nav=ds.v;closeNav();render();break;
+    case 'bill-new':startBill();break;
+    case 'bill-edit':startBill(ds.id);break;
+    case 'sheet-new':startSheet();break;
+    case 'sheet-edit':startSheet(ds.id);break;
+    case 'del':if(ds.kind==='bill')S.bills=S.bills.filter(x=>x.id!==ds.id);else S.sheets=S.sheets.filter(x=>x.id!==ds.id);save();render();toast('Deleted');break;
+    case 'row':open[ds.id]=!open[ds.id];render();break;
+    case 'more':lim+=60;render();break;
+    case 'close':closeModal();break;
+    case 'close-bg':if(ds)closeModal();break;
+    case 'save':saveDraft();break;
+    case 'ros-add':draft.data.ros=draft.data.ros||[];draft.data.ros.push({n:'',p:S.settings.positions[0],a:1});renderModal();break;
+    case 'ros-del':draft.data.ros.splice(+ds.i,1);syncActual();renderModal();break;
+    case 'print':window.print();break;
+    case 'print-save':toast('Choose “Save as PDF” in the print dialog');setTimeout(()=>window.print(),300);break;
+    case 'csv':exportCSV(ds.v);break;
+    case 'json':exportJSON();break;
+    case 'sample':if(confirm('Replace current data with sample data?')){S={settings:S.settings||JSON.parse(JSON.stringify(defaultSettings())),bills:[],sheets:[]};generateSample();S.sample=true;save();render();toast('Sample data loaded')}break;
+    case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];S.sample=false;save();render();toast('All data cleared')}break;
+    case 'rp-step':step(+ds.n);break;
+    case 'rp-open':rp.plant=ds.plant;render();break;
+    case 'eg-nav':egNav(+ds.n);break;
+    case 'open-report':openReport(ds.plant,ds.date,ds.shift);break;
+    case 'print-format':printFormat();break;
+  }
+}
+function step(n){const i=S.settings.shifts.indexOf(rp.shift)+n;if(i<0){rp.shift=S.settings.shifts.at(-1);rp.date=addDay(rp.date,-1)}else if(i>=S.settings.shifts.length){rp.shift=S.settings.shifts[0];rp.date=addDay(rp.date,1)}else rp.shift=S.settings.shifts[i];render()}
+function egNav(n){if(eg.view==='monthly')eg.ym=new Date(Date.UTC(+eg.ym.slice(0,4),+eg.ym.slice(5,7)-1+n,1)).toISOString().slice(0,7);else eg.wk=addDay(eg.wk,7*n);render()}
+function toggleTheme(){const cur=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',cur);localStorage.setItem('pcmd.theme',cur);paintTheme()}
+function paintTheme(){const dark=document.documentElement.getAttribute('data-theme')==='dark';$('#themeBtn').innerHTML=icon(dark?'sun':'moon',18)}
+function closeNav(){$('#app').classList.remove('nav-open')}
+function printFormat(){
+  const html='<div class="paper"><div class="hd"><b>MANNING SUMMARY REPORT</b></div><div class="infogrid"><div><span class="mu">Plant / Site</span><br>______________</div><div><span class="mu">Date</span><br>__ / __ / ____</div><div><span class="mu">Shift</span><br>☐ First ☐ Second</div><div><span class="mu">Agency</span><br>______________</div></div><table class="t"><thead><tr><th>Position</th><th class="r">Required</th><th class="r">Actual</th><th>Verified by</th></tr></thead><tbody>'+S.settings.positions.map(p=>'<tr><td>'+esc(p)+'</td><td class="r">▢</td><td class="r">▢</td><td>______</td></tr>').join('')+'<tr class="tot"><td>GRAND TOTAL MANNING</td><td class="r">▢</td><td class="r">▢</td><td></td></tr></tbody></table><div class="sig">'+[['Prepared by','PRIJ Coordinator'],['Checked by','PRIJ Admin Staff'],['Attested by','Vienovo Warehouse Coordinator'],['Concurred by','Vienovo Warehouse Team Leader']].map(([a,b])=>'<div><b>'+a+'</b><div class="mu">'+b+'</div></div>').join('')+'</div></div>';
+  const w=window.open('','_blank');w.document.write('<!doctype html><meta charset=utf-8><title>Manning Summary Report</title><style>'+document.querySelector('style').textContent+'body{padding:24px}</style>'+html);w.document.close();setTimeout(()=>w.print(),300);
+}
+
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(t){e.preventDefault();act(t.dataset.act,t.dataset)}});
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.matches('[data-filter]')){filters[el.dataset.filter]=el.value;render();return}
+  if(el.matches('[data-sub]')){if(el.dataset.sub==='rs'){rs=el.value;lim=60;render()}return}
+  if(el.matches('[data-eg]')){eg[el.dataset.eg]=el.value;if(el.dataset.eg==='view'){eg.ym=monthsList().at(-1)||curMonth();eg.wk=sun(today())}render();return}
+  if(el.matches('[data-rp]')){rp[el.dataset.rp]=el.value;render();return}
+  if(el.matches('[data-setting]')){S.settings[el.dataset.setting]=el.value.split(/[\n,]+/).map(x=>x.trim()).filter(Boolean);save();render();return}
+  if(el.matches('[data-req]')){S.settings.req[el.dataset.req]=+el.value||0;save();return}
+  if(el.matches('[data-import]')){if(el.files[0])importJSON(el.files[0]);return}
+  if(el.matches('[data-k]')&&draft){setPath(el.dataset.k,readVal(el));if(el.dataset.k.indexOf('ros.')===0)syncActual();renderModal();return}
+});
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+const NAVITEMS=[
+  {g:'Overview'},{v:'overview',t:'Dashboard',i:'grid'},
+  {g:'Operations'},{v:'cost',t:'Cost & Billing',i:'wallet'},{v:'attendance',t:'Attendance',i:'users'},{v:'reports',t:'Shift Reports',i:'file'},
+  {g:'Manage'},{v:'records',t:'Records',i:'db'},{v:'entry',t:'Data Entry',i:'upload'},{v:'settings',t:'Settings',i:'gear'}
+];
+const META={overview:['Dashboard','Company-wide overview'],cost:['Cost & Billing','Spend by category, plant and month'],attendance:['Attendance','Manning fill rate and employee attendance'],reports:['Shift Reports','Manning summary report per plant and shift'],records:['Records','All bills and attendance sheets'],entry:['Data Entry','Record bills and attendance sheets'],settings:['Settings','Masters, defaults and data management']};
+const PAGES={overview:pageOverview,cost:pageCost,attendance:pageAttendance,reports:pageReports,records:pageRecords,entry:pageEntry,settings:pageSettings};
+function renderNav(){const el=$('#nav');if(!el)return;el.innerHTML=NAVITEMS.map(n=>n.g?'<div class="grp">'+n.g+'</div>':'<button data-act="go" data-v="'+n.v+'" class="'+(n.v===nav?'on':'')+'">'+icon(n.i,18)+'<span>'+n.t+'</span></button>').join('')}
+function render(){
+  renderNav();
+  $('#ttl').textContent=META[nav][0];$('#crumb').textContent=META[nav][1];
+  $('#view').innerHTML=PAGES[nav]();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function defaultSettings(){return{plants:DEFAULT_PLANTS.slice(),attPlants:DEFAULT_ATT_PLANTS.slice(),shifts:DEFAULT_SHIFTS.slice(),cats:DEFAULT_CATS.slice(),positions:DEFAULT_POSITIONS.slice(),req:Object.assign({},DEFAULT_REQ),agencies:DEFAULT_AGENCIES.slice()}}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  const savedTheme=localStorage.getItem('pcmd.theme');
+  if(savedTheme)document.documentElement.setAttribute('data-theme',savedTheme);
+  paintTheme();
+  S=load();
+  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],sample:true};generateSample();save()}
+  if(!S.settings.positions)S.settings=defaultSettings();
+  render();
+}
+init();
+</script>
+</body>
+</html>
