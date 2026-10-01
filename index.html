@@ -236,7 +236,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v6';
+const BUILD='build 2026-10-01 · v7';
 
 /* ---------- tiny helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -645,7 +645,7 @@ function individualSection(){
     if(!rows.length)body='<div class="mu" style="padding:12px 0">No individuals recorded for the selected plant, month and agency.</div>';
     else body='<div class="sc"><table class="t"><thead><tr><th>Name</th><th>Position</th><th class="r">Days present</th><th class="r">Absent</th><th>Attendance</th></tr></thead><tbody>'+rows.map(e=>{const P=e.days.size,tot=reportDays.size,A=Math.max(0,tot-P),rate=tot?P/tot*100:100;return '<tr style="cursor:pointer" data-act="ind-person" data-name="'+esc(e.n)+'"><td><b>'+esc(e.n)+'</b></td><td>'+esc(e.p)+'</td><td class="r">'+P+'</td><td class="r '+(A?'up':'')+'">'+A+'</td><td>'+fillPill(rate)+'</td></tr>'}).join('')+'</tbody></table></div>';
   }
-  return '<div class="card"><h3>Section III · Individual attendance</h3><div class="fgroup" style="margin-bottom:10px"><select data-ind="plant"><option value="">— Select plant —</option>'+plantOpts+'</select><select data-indmm>'+monthOpts+'</select><select data-indyy>'+yearOpts+'</select><select data-inda>'+agOpts+'</select></div>'+body+'</div>';
+  return '<div class="card"><h3>Individual attendance</h3><div class="fgroup" style="margin-bottom:10px"><select data-ind="plant"><option value="">— Select plant —</option>'+plantOpts+'</select><select data-indmm>'+monthOpts+'</select><select data-indyy>'+yearOpts+'</select><select data-inda>'+agOpts+'</select></div>'+body+'</div>';
 }
 function personCalHTML(pc){
   const days=dim(indMonth),start=new Date(Date.UTC(+indMonth.slice(0,4),+indMonth.slice(5,7)-1,1)).getUTCDay();
@@ -679,14 +679,20 @@ function weekGrid(){
   const wset=new Set();for(let i=0;i<12;i++)wset.add(addDay(sun(today()),-7*i));S.sheets.forEach(s=>wset.add(sun(s.date)));
   const weeks=[...wset].sort((a,b)=>b.localeCompare(a));
   let wkOpts=weeks.map(d=>'<option value="'+d+'" '+(d===gridWeek?'selected':'')+'>Week '+isoWeek(d)+'</option>').join('');
-  const rows=S.settings.attPlants.map(pl=>'<tr><td><b>'+esc(pl)+'</b></td>'+days.map(d=>'<td style="text-align:center;border-left:1px solid var(--line);white-space:nowrap">'+S.settings.shifts.map((sh,si)=>{
-    const s=S.sheets.find(x=>x.plant===pl&&x.date===d&&x.shift===sh);
-    const ok=s&&validate(s).st==='ok';
-    const bg=s?(ok?'background:var(--ok);color:#fff':'background:var(--warn);color:#fff'):'border:1px dashed var(--line);color:var(--mut)';
-    const title=pl+' · '+fD(d)+' · '+sh+': '+(s?(ok?'uploaded & signed':'uploaded (unsigned)'):'not uploaded — click to add');
-    return '<span class="tk" data-act="'+(s?'open-sheet':'week-add')+'" data-id="'+(s?s.id:'')+'" data-plant="'+esc(pl)+'" data-date="'+d+'" data-shift="'+esc(sh)+'" title="'+esc(title)+'" style="'+bg+'">'+(si+1)+'</span>';
-  }).join('')+'</td>').join('')+'</tr>').join('');
-  return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><h3 style="margin:0">Attendance per Site</h3><div class="fgroup"><button class="btn g s" data-act="grid-week" data-n="-1" title="Previous week">◀</button><span class="pill p-n">Week '+isoWeek(days[0])+'</span><select data-wk>'+wkOpts+'</select><button class="btn g s" data-act="grid-week" data-n="1" title="Next week">▶</button></div></div><div class="sc"><table class="t"><thead><tr><th>Site</th>'+days.map(d=>'<th style="text-align:center;border-left:1px solid var(--line)">'+DW[dow(d)]+'<div class="ax">'+fD(d)+'</div></th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:10px"><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok);margin-right:5px"></b>Uploaded &amp; signed</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--warn);margin-right:5px"></b>Uploaded (unsigned)</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1px dashed var(--mut);margin-right:5px"></b>Not uploaded</span></div></div>';
+  const hcOf=s=>{if(!s)return 0;let t=sum(S.settings.positions,p=>((s.rows||{})[p]?s.rows[p][1]:0));if(!t&&s.ros)t=s.ros.length;return t};
+  const rows=S.settings.attPlants.map(pl=>'<tr><td><b>'+esc(pl)+'</b></td>'+days.map(d=>{
+    let tot=0;
+    const cells=S.settings.shifts.map((sh,si)=>{
+      const s=S.sheets.find(x=>x.plant===pl&&x.date===d&&x.shift===sh);
+      const ok=s&&validate(s).st==='ok';
+      const hc=hcOf(s);tot+=hc;
+      const col=s?(ok?'var(--ok)':'var(--warn)'):'var(--mut)';
+      const title=pl+' · '+fD(d)+' · '+sh+' shift: '+(s?((ok?'uploaded & signed':'uploaded (unsigned)')+' · head count '+hc):'not uploaded — click to add');
+      return '<span class="tk" data-act="'+(s?'open-sheet':'week-add')+'" data-id="'+(s?s.id:'')+'" data-plant="'+esc(pl)+'" data-date="'+d+'" data-shift="'+esc(sh)+'" title="'+esc(title)+'" style="display:inline-flex;gap:5px;align-items:center;justify-content:center;width:auto;min-width:34px;padding:0 7px;background:'+(s?'color-mix(in srgb,'+col+' 20%,transparent)':'transparent')+';color:'+(s?col:'var(--mut)')+';border:1px solid '+(s?'transparent':'var(--line)')+';margin:1px 2px">'+(si+1)+'<b>'+(s?hc:'–')+'</b></span>';
+    }).join('');
+    return '<td style="text-align:center;border-left:1px solid var(--line);white-space:nowrap">'+cells+'<div class="ax" style="margin-top:2px;font-weight:800;color:var(--brand)">'+tot+'</div></td>';
+  }).join('')+'</tr>').join('');
+  return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><h3 style="margin:0">Attendance per Site</h3><div class="fgroup"><button class="btn g s" data-act="grid-week" data-n="-1" title="Previous week">◀</button><span class="pill p-n">Week '+isoWeek(days[0])+'</span><select data-wk>'+wkOpts+'</select><button class="btn g s" data-act="grid-week" data-n="1" title="Next week">▶</button></div></div><div class="sc"><table class="t"><thead><tr><th>Site</th>'+days.map(d=>'<th style="text-align:center;border-left:1px solid var(--line)">'+DW[dow(d)]+'<div class="ax">'+fD(d)+'</div><div class="ax">1 · 2</div></th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:10px"><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:color-mix(in srgb,var(--ok) 20%,transparent);border:1px solid var(--ok);margin-right:5px"></b>Uploaded &amp; signed</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:color-mix(in srgb,var(--warn) 20%,transparent);border:1px solid var(--warn);margin-right:5px"></b>Uploaded (unsigned)</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1px dashed var(--mut);margin-right:5px"></b>Not uploaded</span><span>1 = First · 2 = Second · number = head count · bold below = day total</span></div></div>';
 }
 const thumbImg=t=>t?'<img src="'+t+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:none">':'<span style="width:42px;height:42px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--mut);flex:none">'+icon('file',16)+'</span>';
 
@@ -776,7 +782,7 @@ async function geminiRead(parts){
    +'A written name means "present"; use "absent" only if the name is marked A or crossed out. Time/late is not considered. '
    +'When an actual count is not printed, count the present names per position. '
    +'Signatures: true only if a handwritten signature or initials is visible on that line. '
-   +'Dates on these sheets are usually DD-MM-YYYY and the year is the current year ('+new Date().getFullYear()+'); if the year is unclear, use the current year. Output the ISO date. Use "" or null when unreadable. '
+   +'Dates are Month-Day-Year (MM-DD-YYYY), for example 08-04-2026 means August 4, 2026. The year is the current year ('+new Date().getFullYear()+'); if unclear, use the current year. Output the ISO date. Use "" or null when unreadable. '
    +'"notes" MUST briefly state which positions/names you could NOT read and why (blur, glare, faint, too small, cut off), or "clear" if all were legible.';
   const body={contents:[{role:'user',parts:[{text:prompt}].concat(parts)}],generationConfig:{temperature:0,responseMimeType:'application/json'}};
   let discovered=[];
@@ -895,12 +901,11 @@ function sheetForm(){
    +'<label class="btn g s" style="cursor:pointer">'+icon('upload',14)+' '+(it.thumb?'Replace':'Attach')+' photo<input type="file" data-attfile data-replace hidden accept="image/*,application/pdf"></label></div>';
   const posOrder=p=>{const k=S.settings.positions.indexOf(p);return k<0?999:k};
   const sortedRos=(it.ros||[]).map((r,i)=>({r:r,i:i})).sort((a,b)=>posOrder(a.r.p)-posOrder(b.r.p));
-  const durOf=r=>{if(!r.ti||!r.to)return '—';const a=r.ti.split(':').map(Number),b=r.to.split(':').map(Number);let m=(b[0]*60+b[1])-(a[0]*60+a[1]);if(m<0)m+=1440;const h=Math.floor(m/60),mm=m%60;return h+'h'+(mm?(' '+mm+'m'):'')};
-  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Names written on the sheet. A name here = present; not listed = absent. Time in/out are optional.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
-   +'<div class="sc rv"><table class="t"><thead><tr><th style="width:28%">Position</th><th>Name</th><th style="width:104px">Time In</th><th style="width:104px">Time Out</th><th style="width:84px">Duration</th><th style="width:44px"></th></tr></thead><tbody>'
-   +(sortedRos.length?sortedRos.map(o=>{const r=o.r,i=o.i;return '<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="width:100%;min-width:140px"></td><td><input type="time" data-k="ros.'+i+'.ti" value="'+esc(r.ti||'')+'"></td><td><input type="time" data-k="ros.'+i+'.to" value="'+esc(r.to||'')+'"></td><td class="mu"><b>'+durOf(r)+'</b></td><td><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',13)+'</button></td></tr>'}).join(''):'<tr><td colspan="6" class="mu" style="padding:14px">No names yet — click Add name.</td></tr>')
+  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Actual manning</h3><div class="sub" style="margin:0">Names written on the sheet. A name here = present; not listed = absent.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
+   +'<div class="sc rv"><table class="t"><thead><tr><th style="width:40%">Position</th><th>Name</th><th style="width:44px"></th></tr></thead><tbody>'
+   +(sortedRos.length?sortedRos.map(o=>{const r=o.r,i=o.i;return '<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="width:100%;min-width:150px"></td><td><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',13)+'</button></td></tr>'}).join(''):'<tr><td colspan="3" class="mu" style="padding:14px">No names yet — click Add name.</td></tr>')
    +'</tbody></table></div></div>';
-  const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section II · Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g" data-act="req-reset" title="Restore the system default required manning">'+icon('refresh',14)+' Reset to system defaults</button></div>'
+  const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g" data-act="req-reset" title="Restore the system default required manning">'+icon('refresh',14)+' Reset to system defaults</button></div>'
    +'<div class="grid g21" style="margin:0"><div><div class="sc rv"><table class="t"><thead><tr><th>Position</th><th>Required</th><th>Actual</th><th>Gap</th></tr></thead><tbody>'
    +S.settings.positions.map(p=>{const r=it.rows[p]||[0,0],g=r[1]-r[0];return '<tr><td>'+esc(p)+'</td><td><input type="number" min="0" data-k="rows.'+p+'.0" value="'+r[0]+'"></td><td><input type="number" min="0" data-k="rows.'+p+'.1" value="'+r[1]+'"></td><td class="'+(g<0?'up':g>0?'mu':'')+'"><b>'+(g?(g>0?'+':'')+g:'—')+'</b></td></tr>'}).join('')
    +'<tr class="tot"><td>Grand total</td><td>'+v.rq+'</td><td>'+v.ac+'</td><td></td></tr></tbody></table></div></div>'
@@ -1051,7 +1056,7 @@ document.addEventListener('change',e=>{
 /* ============================================================
    RENDER
    ============================================================ */
-const TABS=[['dash','Dashboard','grid'],['upload','Upload','upload'],['records','Records','db']];
+const TABS=[['dash','Dashboard','grid'],['upload','Upload','upload']];
 const META={
   dash:{t:'Dashboard',s:{bill:'Cost overview across all plants',att:'Manning fill rate and employee attendance'}},
   upload:{t:'Upload',s:{bill:'Add a billing entry',att:'Add an attendance sheet'}},
@@ -1062,7 +1067,7 @@ function currentView(){
   if(nav==='settings')return pageSettings();
   if(nav==='dash')return sub==='bill'?pageCost():pageAttendance();
   if(nav==='upload')return sub==='bill'?entryBill():entryAtt();
-  return sub==='bill'?recordsBill():recordsAtt();
+  return sub==='bill'?pageCost():pageAttendance();
 }
 function subTabs(){
   return '<div class="subtabs">'+[['bill','Billing'],['att','Attendance']].map(([k,t])=>'<button data-act="sub" data-v="'+k+'" class="'+(sub===k?'on':'')+'">'+t+'</button>').join('')+'</div>';
