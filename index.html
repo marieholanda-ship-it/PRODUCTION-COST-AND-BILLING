@@ -286,41 +286,6 @@ const LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWIAAAGoCAYAAAB8L++oAA
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Storage full — export a backup')}}
 function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
 
-/* ---------- sample data ---------- */
-function generateSample(){
-  let sd=11;const rnd=()=>(sd=(sd*9301+49297)%233280)/233280;
-  const months=['2026-04','2026-05','2026-06','2026-07','2026-08','2026-09'];
-  const base={Electricity:[180,320],Water:[25,60],Fuel:[90,240],'Manpower Agency':[140,260],Others:[10,40]};
-  const vend={Electricity:'Local electric utility',Water:'Water district',Fuel:'Fuel supplier','Manpower Agency':'PRIJ Manpower Services',Others:'Various'};
-  S.bills=[];
-  DEFAULT_PLANTS.forEach((p,pi)=>months.forEach((m,mi)=>DEFAULT_CATS.forEach(c=>{
-    const b=base[c],amt=Math.round((b[0]+(b[1]-b[0])*rnd())*1000*(1+mi*.02)*(pi<3?1.2:.8));
-    S.bills.push({id:uid(),plant:p,cat:c,vendor:(p==='HOREB'&&c==='Manpower Agency')?'PRIJ Manpower Services':vend[c],inv:'INV-'+(1000+S.bills.length),per:m,amt});
-  })));
-  /* attendance sheets + rosters */
-  const FN='Oliver Glen Junior Winson Jimboy Alfredo Dave Ivan Felix Earl Rey Dexter Mark Ryan Carlo Joel Ramil Noel Arnel Rico Jerome Bong Kevin Paolo Jessie Tonton Ariel Nestor Renato Cris Allan Jun Lito Bert Migs Ronnie Eddie Marlon Randy Nico'.split(' ');
-  const LN='Santos Reyes Cruz Bautista Ocampo Garcia Mendoza Torres Flores Ramos Aquino Castillo Villanueva Navarro Salazar Domingo Pascual Soriano Valdez Manalo Cabrera Lim'.split(' ');
-  const AP=DEFAULT_ATT_PLANTS.slice(),SH=DEFAULT_SHIFTS;
-  let k=0;
-  const pool=AP.map((p,pi)=>SH.map((sh,si)=>DEFAULT_POSITIONS.map((pos,i)=>{
-    const r=Math.max(0,(DEFAULT_REQ[pos]||1)+(pi%2&&i===3?1:0)-(si&&i>5?1:0));
-    return Array.from({length:r?r+1:0},()=>{const j=k++;return FN[j%FN.length]+' '+LN[(j*3+pi)%LN.length]});
-  })));
-  S.sheets=[];
-  AP.forEach((p,pi)=>{for(let d=1;d<=30;d++)SH.forEach((sh,si)=>{
-    if(rnd()<.05)return;
-    const rows={},ros=[];
-    DEFAULT_POSITIONS.forEach((pos,i)=>{
-      const L=pool[pi][si][i],r=Math.max(0,L.length-1);let ac=0;
-      L.forEach((n,x)=>{if(r&&(d+i)%(r+1)===x)return;const bd=(x+i+pi)%7===0?.2:.05,t=rnd(),a=t<bd?0:t<bd+.03?2:1;if(a===1)ac++;ros.push({n,p:pos,a})});
-      rows[pos]=[r,ac];
-    });
-    const sig={prep:1,check:1,att:1,con:1};if(rnd()<.08)sig[SIGS[Math.floor(rnd()*4)][0]]=0;
-    const ac=sum(DEFAULT_POSITIONS,q=>rows[q][1]);
-    S.sheets.push({id:uid(),plant:p,date:'2026-09-'+pad(d),shift:sh,agency:p==='HOREB'?'PRIJ Manpower Services':'Asia Peopleworks, Inc.',rows,sig,decl:rnd()<.03?ac+1:ac,ros});
-  })});
-}
-
 /* ---------- filters / selectors ---------- */
 const fBills=()=>S.bills.filter(b=>(filters.plant==='all'||b.plant===filters.plant)&&(filters.month==='all'||b.per===filters.month));
 const fSheets=()=>S.sheets.filter(s=>(filters.plant==='all'||s.plant===filters.plant)&&(filters.month==='all'||s.date.slice(0,7)===filters.month)&&(filters.shift==='all'||s.shift===filters.shift));
@@ -334,7 +299,7 @@ function filterSelects(withShift){
     +(withShift?'<select data-filter="shift"><option value="all">All shifts</option>'+S.settings.shifts.map(x=>'<option '+(x===filters.shift?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select>':'');
 }
 function filterBar(withShift,extra){
-  return '<div class="toolbar"><div class="fgroup">'+filterSelects(withShift)+'</div><div class="fgroup">'+(S.sample?'<span class="chip">Sample data</span>':'')+(extra||'')+'</div></div>';
+  return '<div class="toolbar"><div class="fgroup">'+filterSelects(withShift)+'</div><div class="fgroup">'+(extra||'')+'</div></div>';
 }
 
 /* ---------- validation ---------- */
@@ -635,14 +600,13 @@ function pageSettings(){
    +'<div class="card"><h3>Data &amp; backup</h3><div class="sub">Everything is stored in this browser only. Export regularly.</div>'
    +'<div class="fgroup"><button class="btn g" data-act="json">'+icon('download',15)+' Export backup (JSON)</button>'
    +'<label class="btn g" style="cursor:pointer">'+icon('upload',15)+' Import backup<input type="file" accept="application/json" data-import hidden></label>'
-   +'<button class="btn g" data-act="sample">'+icon('refresh',15)+' Reload sample data</button>'
    +'<button class="btn d" data-act="clear">'+icon('trash',15)+' Clear all data</button></div>'
-   +'<div class="sub" style="margin:14px 0 0">'+(S.sample?'Currently showing sample data.':'Holding your recorded data.')+' · '+S.bills.length+' bills · '+S.sheets.length+' sheets</div></div>';
+   +'<div class="sub" style="margin:14px 0 0">Stored on this device · '+S.bills.length+' bills · '+S.sheets.length+' sheets</div></div>';
 }
 
 /* ---------- empty state ---------- */
 function emptyBox(t,d){
-  return '<div class="card empty"><div class="big">'+icon('db',34)+'</div><b>'+(t||'No data yet')+'</b><p style="margin:6px 0 16px">'+(d||'Record a bill or attendance sheet, or preview with sample data.')+'</p><div class="fgroup" style="justify-content:center"><button class="btn" data-act="bill-new">'+icon('plus',15)+' Add bill</button><button class="btn a" data-act="sheet-new">'+icon('plus',15)+' Add attendance sheet</button><button class="btn g" data-act="sample">'+icon('refresh',15)+' Load sample data</button></div></div>';
+  return '<div class="card empty"><div class="big">'+icon('db',34)+'</div><b>'+(t||'No data yet')+'</b><p style="margin:6px 0 16px">'+(d||'Record a bill or an attendance sheet from the Upload tab.')+'</p><div class="fgroup" style="justify-content:center"><button class="btn" data-act="bill-new">'+icon('plus',15)+' Add bill</button><button class="btn a" data-act="sheet-new">'+icon('plus',15)+' Add attendance sheet</button></div></div>';
 }
 
 /* ============================================================
@@ -665,11 +629,11 @@ function renderModal(){
   const el=$('#modal');
   if(rp){el.innerHTML=reportModalHTML();return}
   if(!draft){el.innerHTML='';return}
-  el.innerHTML='<div class="modal-bg" data-act="close-bg"><div class="modal" onclick="event.stopPropagation()"><div class="mh"><h3>'+(draft.kind==='bill'?'Billing entry':'Attendance sheet entry')+'</h3><button class="x" data-act="close">'+icon('x',15)+'</button></div><div class="mb">'+(draft.kind==='bill'?billForm():sheetForm())+'</div><div class="mf"><button class="btn g" data-act="close">Cancel</button><button class="btn a" data-act="save">Save</button></div></div></div>';
+  el.innerHTML='<div class="modal-bg" data-act="close-bg"><div class="modal"><div class="mh"><h3>'+(draft.kind==='bill'?'Billing entry':'Attendance sheet entry')+'</h3><button class="x" data-act="close">'+icon('x',15)+'</button></div><div class="mb">'+(draft.kind==='bill'?billForm():sheetForm())+'</div><div class="mf"><button class="btn g" data-act="close">Cancel</button><button class="btn a" data-act="save">Save</button></div></div></div>';
 }
 function reportModalHTML(){
   const rec=getRec(rp.plant,rp.date,rp.shift),v=rec&&validate(rec),plan=planFor(rp.plant,rp.shift);
-  return '<div class="modal-bg" data-act="close-bg"><div class="modal" style="max-width:1000px" onclick="event.stopPropagation()">'
+   return '<div class="modal-bg" data-act="close-bg"><div class="modal" style="max-width:1000px">'
    +'<div class="mh"><h3>Manning summary report</h3><div class="fgroup">'
    +'<select data-rp="plant">'+S.settings.attPlants.map(p=>'<option '+(p===rp.plant?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select>'
    +'<button class="btn g s" data-act="rp-step" data-n="-1">◀</button>'
@@ -722,7 +686,7 @@ function saveDraft(){
     if(draft.id)Object.assign(S.sheets.find(x=>x.id===draft.id),it);
     else S.sheets.push(Object.assign({},it,{id:uid()}));
   }
-  S.sample=false;save();closeModal();render();toast('Saved');
+  save();closeModal();render();toast('Saved');
 }
 
 /* ============================================================
@@ -770,8 +734,7 @@ function act(a,ds){
     case 'print-save':toast('Choose “Save as PDF” in the print dialog');setTimeout(()=>window.print(),300);break;
     case 'csv':exportCSV(ds.v);break;
     case 'json':exportJSON();break;
-    case 'sample':if(confirm('Replace current data with sample data?')){S={settings:S.settings||JSON.parse(JSON.stringify(defaultSettings())),bills:[],sheets:[]};generateSample();S.sample=true;save();render();toast('Sample data loaded')}break;
-    case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];S.sample=false;save();render();toast('All data cleared')}break;
+    case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];save();render();toast('All data cleared')}break;
     case 'rp-step':step(+ds.n);break;
     case 'rp-open':rp.plant=ds.plant;render();break;
     case 'eg-nav':egNav(+ds.n);break;
@@ -789,7 +752,11 @@ function printFormat(){
   const w=window.open('','_blank');w.document.write('<!doctype html><meta charset=utf-8><title>Manning Summary Report</title><style>'+document.querySelector('style').textContent+'body{padding:24px}</style>'+html);w.document.close();setTimeout(()=>w.print(),300);
 }
 
-document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(t){e.preventDefault();act(t.dataset.act,t.dataset)}});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]');if(!t)return;
+  if(t.dataset.act==='close-bg'&&e.target!==t)return;   /* only close when clicking the dim backdrop, not inside the modal */
+  e.preventDefault();act(t.dataset.act,t.dataset);
+});
 document.addEventListener('change',e=>{
   const el=e.target;
   if(el.matches('[data-filter]')){filters[el.dataset.filter]=el.value;render();return}
@@ -841,7 +808,7 @@ function init(){
   if(savedTheme)document.documentElement.setAttribute('data-theme',savedTheme);
   paintTheme();
   S=load();
-  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],sample:true};generateSample();save()}
+  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[]};save()}
   if(!S.settings.positions)S.settings=defaultSettings();
   const lg=$('#logo');if(lg&&LOGO)lg.src=LOGO;
   render();
