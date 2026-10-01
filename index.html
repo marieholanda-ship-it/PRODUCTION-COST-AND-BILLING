@@ -36,11 +36,11 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#21404f;background-
 .brand .logo{width:42px;height:42px;object-fit:contain;border-radius:11px;background:#fff;border:1px solid var(--line);padding:3px;flex:none}
 .brand b{display:block;font-size:16px;font-weight:800;letter-spacing:-.01em;line-height:1.05}
 .brand small{display:block;font-size:10.5px;color:var(--mut);letter-spacing:.02em}
-.topnav{display:flex;gap:4px;background:var(--soft);border:1px solid var(--line);padding:4px;border-radius:13px;margin:0 auto;overflow-x:auto;max-width:100%}
+.topnav{display:flex;gap:4px;background:var(--soft);border:1px solid var(--line);padding:4px;border-radius:13px;margin-left:auto;overflow-x:auto;max-width:100%}
 .topnav button{display:inline-flex;align-items:center;gap:8px;border:0;background:none;color:var(--mut);font:700 13.5px inherit;padding:8px 18px;border-radius:9px;cursor:pointer;white-space:nowrap;transition:.15s}
 .topnav button:hover{color:var(--ink)}
 .topnav button.on{background:var(--brand);color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--brand) 35%,transparent)}
-.tb-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
+.tb-actions{display:flex;align-items:center;gap:8px;margin-left:10px}
 .user{display:flex;align-items:center;gap:9px;padding:5px 6px 5px 12px;border:1px solid var(--line);border-radius:99px;background:var(--panel)}
 .user .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--acc));color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}
 .user span{font-size:12.5px;font-weight:700}
@@ -48,7 +48,10 @@ html[data-theme="dark"] ::-webkit-scrollbar-thumb{background:#21404f;background-
 .pagehead{margin-bottom:14px}
 .pagehead h1{margin:0;font-size:20px;font-weight:800;letter-spacing:-.02em}
 .pagehead p{margin:2px 0 0;font-size:12.5px;color:var(--mut)}
-.subtabs{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--line);padding:4px;border-radius:12px;margin-bottom:16px;box-shadow:var(--shadow)}
+.subtabs{display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--line);padding:4px;border-radius:12px;margin-bottom:16px;box-shadow:var(--shadow);position:sticky;top:74px;z-index:25}
+.busy{display:flex;align-items:center;gap:10px;margin-top:10px;padding:12px 14px;border-radius:12px;background:linear-gradient(90deg,color-mix(in srgb,var(--acc) 26%,transparent),color-mix(in srgb,var(--brand2) 26%,transparent));border:1px solid color-mix(in srgb,var(--acc) 55%,transparent);font-weight:800;color:var(--ink)}
+.spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid color-mix(in srgb,var(--brand) 25%,transparent);border-top-color:var(--acc);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .subtabs button{border:0;background:none;color:var(--mut);font:700 13px inherit;padding:8px 22px;border-radius:9px;cursor:pointer;transition:.15s}
 .subtabs button:hover{color:var(--ink)}
 .subtabs button.on{background:var(--brand2);color:#fff}
@@ -205,7 +208,6 @@ svg.dn{width:180px;height:180px;display:block;margin:auto}
       <button class="x" data-act="settings" aria-label="Settings" title="Settings">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6h.09A1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
-      <div class="user"><div class="av">VA</div><span>Vienovo Admin</span></div>
     </div>
   </header>
   <main class="view" id="view"></main>
@@ -234,7 +236,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v5';
+const BUILD='build 2026-10-01 · v6';
 
 /* ---------- tiny helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -514,7 +516,7 @@ function agg(L){const V=L.map(s=>validate(s));return{rq:sum(V,v=>v.rq),ac:sum(V,
 const srow=(a,b,x,t)=>'<tr'+(t?' class="tot"':'')+'><td><b>'+esc(a)+'</b></td><td class="mu">'+esc(b)+'</td><td class="r">'+x.rq+'</td><td class="r"><b>'+x.ac+'</b></td><td>'+(x.rq?fillPill(pct(x.ac,x.rq)):'—')+'</td><td class="r">'+x.ab+'</td><td class="r">'+x.lv+'</td><td class="r">'+(x.dn?Math.round(x.ac/x.dn):'—')+'</td><td class="r">'+(x.n?x.sg+'/'+x.n:'—')+'</td></tr>';
 
 /* ---------- employee registry (agency manpower database) ---------- */
-const empKey=n=>String(n||'').trim().replace(/\s+/g,' ').toLowerCase();
+const empKey=n=>String(n||'').toLowerCase().replace(/[^a-z0-9\s]+/g,' ').replace(/\s+/g,' ').trim().split(' ').filter(Boolean).sort().join(' ');
 function findEmp(name){const k=empKey(name);return (S.employees||[]).find(e=>empKey(e.name)===k)}
 function upsertEmployees(ros,date,agency){
   if(!S.employees)S.employees=[];
@@ -622,7 +624,7 @@ function entryAtt(){
    +'<div class="fgroup" style="margin-top:10px"><label class="btn g" style="cursor:pointer">'+icon('camera',15)+' Scan with camera<input type="file" data-attfile accept="image/*" capture="environment" hidden></label>'
    +'<button class="btn g" data-act="print-format">'+icon('print',15)+' Print Form</button></div>'
    +(keyOk?'':'<div class="iss w" style="margin-top:10px">'+icon('alert',14)+' Auto-read is off — add your Google Gemini API key in Settings.</div>')
-   +(upBusy?'<div class="msg" style="margin-top:10px">'+upBusy+'</div>':'')
+   +(upBusy?'<div class="busy"><span class="spin"></span>'+esc(upBusy)+'</div>':'')
    +(upErr?'<div class="iss w" style="margin-top:10px">'+icon('alert',14)+' '+esc(upErr)+'</div>':'')
    +'</div>';
   return '<div style="display:grid;gap:16px">'+upload+weekGrid()+individualSection()+'</div>';
@@ -706,7 +708,8 @@ function pageSettings(){
    +'<div class="fgroup"><button class="btn g" data-act="json">'+icon('download',15)+' Export backup (JSON)</button>'
    +'<label class="btn g" style="cursor:pointer">'+icon('upload',15)+' Import backup<input type="file" accept="application/json" data-import hidden></label>'
    +'<button class="btn d" data-act="clear">'+icon('trash',15)+' Clear all data</button></div>'
-   +'<div class="sub" style="margin:14px 0 0">Stored on this device · '+S.bills.length+' bills · '+S.sheets.length+' sheets · '+esc(BUILD)+'</div></div>';
+   +'<div class="sub" style="margin:14px 0 0">Stored on this device · '+S.bills.length+' bills · '+S.sheets.length+' sheets · '+esc(BUILD)+'</div></div>'
+   +'<div class="card"><div class="fgroup" style="justify-content:space-between"><span class="mu">All changes are saved instantly — click to confirm.</span><button class="btn a" data-act="save-settings">'+icon('check',15)+' Save changes</button></div></div>';
 }
 
 /* ---------- empty state ---------- */
@@ -811,7 +814,8 @@ function sheetFromAI(j,thumb){
   const rowsList=j.rows||j.positions||[];
   rowsList.forEach(r=>{const p=mapPos(r.position||r.pos||r.p);if(p)d.rows[p]=[+(r.required!=null?r.required:r.req)||0,+(r.actual!=null?r.actual:r.act)||0]});
   const rosterList=j.roster||j.names||j.employees||[];
-  d.ros=rosterList.filter(r=>r&&(r.name||r.n)).map(r=>({n:String(r.name||r.n).trim(),p:mapPos(r.position||r.pos||r.p)||S.settings.positions[0],a:1}));
+  d.ros=rosterList.filter(r=>r&&(r.name||r.n)).map(r=>({n:String(r.name||r.n).trim(),p:mapPos(r.position||r.pos||r.p)||S.settings.positions[0],a:1,ti:(r.time_in||r.ti||''),to:(r.time_out||r.to||'')}));
+  const seen={};d.ros=d.ros.filter(r=>{const k=empKey(r.n);if(seen[k])return false;seen[k]=1;return true});
   S.settings.positions.forEach(p=>{const c=d.ros.filter(r=>r.p===p).length;if(c)d.rows[p][1]=c});
   d.decl=(j.declared_total==null?null:+j.declared_total);
   const g=j.signatures||{};d.sig={prep:+!!g.prepared,check:+!!g.checked,att:+!!g.attested,con:+!!g.concurred};
@@ -832,7 +836,7 @@ async function handleAttUpload(files){
     }
   }catch(e){}
   if(!ai.key){upErr='Auto-read needs a Google Gemini API key — add it in Settings.';startSheet(null,Object.assign(blankSheet(),{thumb:thumb}));return}
-  upBusy='Reading the sheet with AI…';render();
+  upBusy='Scanning with AI… reading the sheet, please wait';render();
   try{const j=await geminiRead(parts);upBusy='';upErr='';lastAIErr='';startSheet(null,sheetFromAI(j,thumb),true)}
   catch(e){let msg=String((e&&e.message)||e).slice(0,240);if(/503|high demand|overload|unavailable|temporarily/i.test(msg))msg="Google's AI model is busy right now (temporary) — it retried automatically. Please try again in a moment.";upBusy='';upErr='AI could not read the sheet: '+msg;lastAIErr=msg;render();startSheet(null,Object.assign(blankSheet(),{thumb:thumb}),true)}
 }
@@ -891,9 +895,10 @@ function sheetForm(){
    +'<label class="btn g s" style="cursor:pointer">'+icon('upload',14)+' '+(it.thumb?'Replace':'Attach')+' photo<input type="file" data-attfile data-replace hidden accept="image/*,application/pdf"></label></div>';
   const posOrder=p=>{const k=S.settings.positions.indexOf(p);return k<0?999:k};
   const sortedRos=(it.ros||[]).map((r,i)=>({r:r,i:i})).sort((a,b)=>posOrder(a.r.p)-posOrder(b.r.p));
-  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Names written on the sheet. A name here = present; a person not listed = absent.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
-   +'<div class="sc rv"><table class="t"><thead><tr><th style="width:40%">Position</th><th>Name</th><th style="width:44px"></th></tr></thead><tbody>'
-   +(sortedRos.length?sortedRos.map(o=>{const r=o.r,i=o.i;return '<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="width:100%;min-width:150px"></td><td><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',13)+'</button></td></tr>'}).join(''):'<tr><td colspan="3" class="mu" style="padding:14px">No names yet — click Add name.</td></tr>')
+  const durOf=r=>{if(!r.ti||!r.to)return '—';const a=r.ti.split(':').map(Number),b=r.to.split(':').map(Number);let m=(b[0]*60+b[1])-(a[0]*60+a[1]);if(m<0)m+=1440;const h=Math.floor(m/60),mm=m%60;return h+'h'+(mm?(' '+mm+'m'):'')};
+  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Names written on the sheet. A name here = present; not listed = absent. Time in/out are optional.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
+   +'<div class="sc rv"><table class="t"><thead><tr><th style="width:28%">Position</th><th>Name</th><th style="width:104px">Time In</th><th style="width:104px">Time Out</th><th style="width:84px">Duration</th><th style="width:44px"></th></tr></thead><tbody>'
+   +(sortedRos.length?sortedRos.map(o=>{const r=o.r,i=o.i;return '<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="width:100%;min-width:140px"></td><td><input type="time" data-k="ros.'+i+'.ti" value="'+esc(r.ti||'')+'"></td><td><input type="time" data-k="ros.'+i+'.to" value="'+esc(r.to||'')+'"></td><td class="mu"><b>'+durOf(r)+'</b></td><td><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',13)+'</button></td></tr>'}).join(''):'<tr><td colspan="6" class="mu" style="padding:14px">No names yet — click Add name.</td></tr>')
    +'</tbody></table></div></div>';
   const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section II · Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g" data-act="req-reset" title="Restore the system default required manning">'+icon('refresh',14)+' Reset to system defaults</button></div>'
    +'<div class="grid g21" style="margin:0"><div><div class="sc rv"><table class="t"><thead><tr><th>Position</th><th>Required</th><th>Actual</th><th>Gap</th></tr></thead><tbody>'
@@ -986,7 +991,7 @@ function act(a,ds){
     case 'close':closeModal();break;
     case 'close-bg':if(ds)closeModal();break;
     case 'save':saveDraft();break;
-    case 'ros-add':draft.data.ros=draft.data.ros||[];draft.data.ros.push({n:'',p:ds.pos||S.settings.positions[0],a:1});draft.dirty=true;renderModal();break;
+    case 'ros-add':draft.data.ros=draft.data.ros||[];draft.data.ros.push({n:'',p:ds.pos||S.settings.positions[0],a:1,ti:'',to:''});draft.dirty=true;renderModal();break;
     case 'ros-del':draft.data.ros.splice(+ds.i,1);syncActual();draft.dirty=true;renderModal();break;
     case 'req-reset':S.settings.positions.forEach(p=>{draft.data.rows[p]=[S.settings.req[p]||0,(draft.data.rows[p]||[0,0])[1]]});draft.dirty=true;renderModal();break;
     case 'emp-add':if(!S.employees)S.employees=[];S.employees.push({id:uid(),name:'New employee',position:S.settings.positions[0],agency:S.settings.agencies[0],status:'active',from:today(),to:'',note:''});save();render();break;
@@ -996,6 +1001,7 @@ function act(a,ds){
     case 'csv':exportCSV(ds.v);break;
     case 'json':exportJSON();break;
     case 'ai-test':testAI();break;
+    case 'save-settings':save();render();toast('Settings saved');break;
     case 'copy-diag':try{navigator.clipboard.writeText(diagText());toast('Diagnostics copied — paste to support')}catch(e){toast('Copy failed — select the text above manually')}break;
     case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];save();render();toast('All data cleared')}break;
     case 'rp-step':step(+ds.n);break;
