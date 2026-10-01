@@ -234,6 +234,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const BUILD='build 2026-10-01 · AI v2';
 
 /* ---------- tiny helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -657,7 +658,7 @@ function pageSettings(){
    +'<div class="fgroup"><button class="btn g" data-act="json">'+icon('download',15)+' Export backup (JSON)</button>'
    +'<label class="btn g" style="cursor:pointer">'+icon('upload',15)+' Import backup<input type="file" accept="application/json" data-import hidden></label>'
    +'<button class="btn d" data-act="clear">'+icon('trash',15)+' Clear all data</button></div>'
-   +'<div class="sub" style="margin:14px 0 0">Stored on this device · '+S.bills.length+' bills · '+S.sheets.length+' sheets</div></div>';
+   +'<div class="sub" style="margin:14px 0 0">Stored on this device · '+S.bills.length+' bills · '+S.sheets.length+' sheets · '+esc(BUILD)+'</div></div>';
 }
 
 /* ---------- empty state ---------- */
@@ -851,7 +852,12 @@ function aiBanner(it){
   if(!n&&lastAIRaw)b+='<div class="iss w" style="margin:0 0 12px;padding:10px;border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:10px;background:color-mix(in srgb,var(--warn) 8%,transparent)">'+icon('alert',15)+' <b>No names were found on the sheet.</b> If names are visible in the photo, retake it closer, brighter and sharper (avoid blur/glare), or type them into Section I.</div>';
   return b;
 }
-function aiDebugBox(){return lastAIRaw?'<details open style="margin:0 0 14px"><summary style="cursor:pointer;font-size:12px;color:var(--mut)">AI response (for support)</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;max-height:240px;overflow:auto;background:var(--soft);padding:10px;border-radius:8px;border:1px solid var(--line)">'+esc(lastAIRaw.slice(0,5000))+'</pre></details>':''}
+function diagText(){return JSON.stringify({build:BUILD,model:(S.settings.ai&&S.settings.ai.model)||'',error:lastAIErr||'',raw:lastAIRaw||''},null,2)}
+function aiDebugBox(){
+  if(!lastAIRaw&&!lastAIErr)return '';
+  const body=(lastAIErr?'ERROR: '+lastAIErr+'\n\n':'')+(lastAIRaw||'');
+  return '<details open style="margin:0 0 14px"><summary style="cursor:pointer;font-size:12px;color:var(--mut)">AI diagnostics (for support)</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;max-height:260px;overflow:auto;background:var(--soft);padding:10px;border-radius:8px;border:1px solid var(--line)">'+esc(body.slice(0,6000))+'</pre><div style="margin:8px 0 0"><button class="btn g s" data-act="copy-diag">'+icon('download',13)+' Copy diagnostics</button></div></details>';
+}
 function closeModal(){$('#modal').innerHTML='';draft=null;rp=null}
 function saveDraft(){
   const it=draft.data;
@@ -920,6 +926,7 @@ function act(a,ds){
     case 'csv':exportCSV(ds.v);break;
     case 'json':exportJSON();break;
     case 'ai-test':testAI();break;
+    case 'copy-diag':try{navigator.clipboard.writeText(diagText());toast('Diagnostics copied — paste to support')}catch(e){toast('Copy failed — select the text above manually')}break;
     case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];save();render();toast('All data cleared')}break;
     case 'rp-step':step(+ds.n);break;
     case 'rp-open':rp.plant=ds.plant;render();break;
@@ -984,7 +991,7 @@ function renderTopNav(){
 function render(){
   renderTopNav();
   const m=META[nav]||META.dash;
-  const head='<div class="pagehead"><h1>'+esc(m.t)+'</h1><p>'+esc(m.s[sub]||m.s.bill||'')+'</p></div>';
+  const head='<div class="pagehead" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><h1>'+esc(m.t)+'</h1><p>'+esc(m.s[sub]||m.s.bill||'')+'</p></div><span class="mu" style="font-size:11px;white-space:nowrap">'+esc(BUILD)+'</span></div>';
   $('#view').innerHTML=head+(nav==='settings'?'':subTabs())+currentView();
   window.scrollTo({top:0,behavior:'instant'});
 }
