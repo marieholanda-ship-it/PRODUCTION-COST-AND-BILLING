@@ -454,7 +454,8 @@ function pageAttendance(){
    +'<div class="grid g2"><div class="card"><h3>Plant scorecard</h3><div class="sub">Required vs actual manning</div>'+plantScorecard(V)+'</div>'
    +'<div class="card"><h3>Unsigned sheets</h3><div class="sub">Latest first</div>'+(fl.length?fl.map(x=>'<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>'+esc(x.a.plant)+'</b> · '+x.a.date.slice(5)+' · '+esc(x.a.shift)+'<div class="iss b" style="margin-top:2px">Missing: '+x.v.iss.filter(i=>i[1].indexOf('Unsigned')===0).map(i=>esc(i[1].slice(10))).join(' · ')+'</div><button class="btn g s" data-act="sheet-edit" data-id="'+x.a.id+'" style="margin-top:6px">'+icon('edit',14)+' Open</button></div>').join(''):'<div class="mu" style="padding:10px 0">All sheets are signed.</div>')+'</div></div>'
    +tracker()
-   +employee();
+   +employee()
+   +employeeMaster();
 }
 
 /* ---------- shift tracker ---------- */
@@ -510,6 +511,38 @@ function employee(){
 }
 function agg(L){const V=L.map(s=>validate(s));return{rq:sum(V,v=>v.rq),ac:sum(V,v=>v.ac),ab:sum(L,s=>(s.ros||[]).filter(r=>r.a===0).length),lv:sum(L,s=>(s.ros||[]).filter(r=>r.a===2).length),n:L.length,sg:V.filter(v=>v.st==='ok').length,dn:new Set(L.map(s=>s.date)).size}}
 const srow=(a,b,x,t)=>'<tr'+(t?' class="tot"':'')+'><td><b>'+esc(a)+'</b></td><td class="mu">'+esc(b)+'</td><td class="r">'+x.rq+'</td><td class="r"><b>'+x.ac+'</b></td><td>'+(x.rq?fillPill(pct(x.ac,x.rq)):'—')+'</td><td class="r">'+x.ab+'</td><td class="r">'+x.lv+'</td><td class="r">'+(x.dn?Math.round(x.ac/x.dn):'—')+'</td><td class="r">'+(x.n?x.sg+'/'+x.n:'—')+'</td></tr>';
+
+/* ---------- employee registry (agency manpower database) ---------- */
+const empKey=n=>String(n||'').trim().replace(/\s+/g,' ').toLowerCase();
+function findEmp(name){const k=empKey(name);return (S.employees||[]).find(e=>empKey(e.name)===k)}
+function upsertEmployees(ros,date,agency){
+  if(!S.employees)S.employees=[];
+  (ros||[]).forEach(r=>{if(!r.n||!String(r.n).trim())return;const k=empKey(r.n);let e=S.employees.find(x=>empKey(x.name)===k);
+    if(!e){S.employees.push({id:uid(),name:String(r.n).trim(),position:r.p||'',agency:agency||'',status:'active',from:date||today(),to:'',note:''})}
+    else{e.name=String(r.n).trim();if(r.p)e.position=r.p;if(agency&&!e.agency)e.agency=agency}
+  });
+}
+function empStats(e,plant,period){
+  const k=empKey(e.name);let P=0,A=0,L=0;const days=new Set();
+  S.sheets.forEach(s=>{if(plant&&plant!=='all'&&s.plant!==plant)return;if(period&&period!=='all'&&s.date.slice(0,7)!==period)return;
+    (s.ros||[]).forEach(r=>{if(empKey(r.n)!==k)return;if(r.a===1)P++;else if(r.a===0)A++;else L++;days.add(s.date)})});
+  return{P:P,A:A,L:L,days:days.size,rate:(P+A)?P/(P+A)*100:100};
+}
+function employeeMaster(){
+  const E=S.employees||[];
+  const plant=(filters.plant==='all'?null:filters.plant),period=(filters.month==='all'?null:filters.month);
+  const rows=E.slice().sort((a,b)=>((a.status==='active'?0:1)-(b.status==='active'?0:1))||a.name.localeCompare(b.name));
+  return '<div class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px"><div><h3>Employee master (agency database)</h3><div class="sub" style="margin:0">Every name from validated sheets is saved here. Track status and individual performance.</div></div><div class="fgroup"><span class="pill p-ok">'+E.filter(e=>e.status==='active').length+' active</span><button class="btn g s" data-act="emp-add">'+icon('plus',14)+' Add employee</button></div></div>'
+   +(E.length?'<div class="sc"><table class="t"><thead><tr><th>Name</th><th>Position</th><th>Agency</th><th>Status</th><th class="r">Present</th><th class="r">Absent</th><th class="r">Leave</th><th>Attendance</th><th></th></tr></thead><tbody>'
+     +rows.map(e=>{const s=empStats(e,plant,period);return '<tr><td><input data-emp="name" data-id="'+e.id+'" value="'+esc(e.name)+'" style="min-width:150px"></td>'
+       +'<td><select data-emp="position" data-id="'+e.id+'">'+S.settings.positions.map(p=>'<option '+(p===e.position?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td>'
+       +'<td class="mu">'+esc(e.agency||'—')+'</td>'
+       +'<td><select data-emp="status" data-id="'+e.id+'">'+[['active','Active'],['resigned','Resigned'],['terminated','Terminated']].map(o=>'<option value="'+o[0]+'" '+(o[0]===e.status?'selected':'')+'>'+o[1]+'</option>').join('')+'</select></td>'
+       +'<td class="r"><b>'+s.P+'</b></td><td class="r '+(s.A?'up':'')+'">'+s.A+'</td><td class="r">'+s.L+'</td><td>'+fillPill(s.rate)+'</td>'
+       +'<td><button class="x" data-act="emp-del" data-id="'+e.id+'" title="Remove">'+icon('trash',13)+'</button></td></tr>'}).join('')+'</tbody></table></div>'
+     :'<div class="empty">No employees yet. They are added automatically when you validate a sheet — or click Add employee.</div>')
+   +'</div>';
+}
 
 /* ---------- pages: shift reports ---------- */
 const dts=()=>[...new Set(S.sheets.map(s=>s.date))].sort();
@@ -738,24 +771,32 @@ function billForm(){
 }
 function sheetForm(){
   const it=draft.data,v=validate(it);
-  return '<div class="toolbar" style="margin-bottom:12px"><div class="fgroup">'
+  const header='<div class="toolbar" style="margin-bottom:12px"><div class="fgroup">'
    +'<select data-k="plant"><option value="">Plant…</option>'+S.settings.plants.map(o=>'<option '+(o===it.plant?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'
    +'<input type="date" data-k="date" value="'+esc(it.date)+'">'
    +'<select data-k="shift">'+S.settings.shifts.map(o=>'<option '+(o===it.shift?'selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'
    +'<input data-k="agency" value="'+esc(it.agency)+'" placeholder="Agency" style="min-width:180px">'
    +'<label class="f" style="margin:0;display:flex;align-items:center;gap:6px">Declared total <input type="number" data-k="decl" style="width:80px" value="'+(it.decl==null?'':it.decl)+'"></label>'
-   +'</div>'+badge(v.st)+'</div>'
-   +'<div style="display:flex;gap:10px;align-items:center;margin:0 0 12px">'
-   +(it.thumb?'<img src="'+it.thumb+'" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--line)">':'<span style="width:72px;height:72px;border-radius:10px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--mut)">'+icon('file',20)+'</span>')
-   +'<label class="btn g s" style="cursor:pointer">'+icon('upload',14)+' '+(it.thumb?'Replace':'Attach')+' photo<input type="file" data-attfile data-replace hidden accept="image/*,application/pdf"></label></div>'
+   +'</div>'+badge(v.st)+'</div>';
+  const thumbRow='<div style="display:flex;gap:10px;align-items:center;margin:0 0 14px">'
+   +(it.thumb?'<img src="'+it.thumb+'" alt="sheet" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--line)">':'<span style="width:72px;height:72px;border-radius:10px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--mut)">'+icon('file',20)+'</span>')
+   +'<label class="btn g s" style="cursor:pointer">'+icon('upload',14)+' '+(it.thumb?'Replace':'Attach')+' photo<input type="file" data-attfile data-replace hidden accept="image/*,application/pdf"></label></div>';
+  const grouped={};(it.ros||[]).forEach((r,i)=>{(grouped[r.p]=grouped[r.p]||[]).push(i)});
+  const order=S.settings.positions.concat(Object.keys(grouped).filter(p=>S.settings.positions.indexOf(p)<0));
+  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Position, then the names written on the sheet.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
+   +'<div class="grid g2" style="margin:0">'
+   +order.map(p=>{const idxs=grouped[p]||[];return '<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px"><b style="font-size:12px">'+esc(p)+'</b><button class="btn g s" data-act="ros-add" data-pos="'+esc(p)+'" title="Add name">'+icon('plus',12)+'</button></div>'
+     +(idxs.length?idxs.map(i=>{const r=it.ros[i];return '<div style="display:flex;gap:6px;align-items:center;margin:3px 0"><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="flex:1;padding:5px 8px"><select data-k="ros.'+i+'.a" title="Status" style="padding:5px 6px">'+[[1,'P'],[0,'A'],[2,'L']].map(([x,l])=>'<option value="'+x+'" '+(x===r.a?'selected':'')+'>'+l+'</option>').join('')+'</select><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',12)+'</button></div>'}).join(''):'<div class="mu" style="font-size:11.5px;padding:2px 0">—</div>')
+     +'</div>'}).join('')
+   +'</div></div>';
+  const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section II · Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g s" data-act="req-reset" title="Restore system default required">'+icon('refresh',14)+' Reset required</button></div>'
    +'<div class="grid g21" style="margin:0"><div><div class="sc rv"><table class="t"><thead><tr><th>Position</th><th>Required</th><th>Actual</th><th>Gap</th></tr></thead><tbody>'
    +S.settings.positions.map(p=>{const r=it.rows[p]||[0,0],g=r[1]-r[0];return '<tr><td>'+esc(p)+'</td><td><input type="number" min="0" data-k="rows.'+p+'.0" value="'+r[0]+'"></td><td><input type="number" min="0" data-k="rows.'+p+'.1" value="'+r[1]+'"></td><td class="'+(g<0?'up':g>0?'mu':'')+'"><b>'+(g?(g>0?'+':'')+g:'—')+'</b></td></tr>'}).join('')
    +'<tr class="tot"><td>Grand total</td><td>'+v.rq+'</td><td>'+v.ac+'</td><td></td></tr></tbody></table></div></div>'
-   +'<div><b style="font-size:12px">Signatures</b><div class="sub" style="margin:4px 0 8px">Tick each signature that appears on the sheet.</div>'
+   +'<div><b style="font-size:12px">Signatures</b><div class="sub" style="margin:4px 0 8px">Tick each signature visible on the sheet.</div>'
    +SIGS.map(([k,l])=>'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin:6px 0"><input type="checkbox" data-k="sig.'+k+'" '+(it.sig[k]?'checked':'')+'> '+esc(l)+'</label>').join('')
-   +'<div style="margin-top:12px">'+(v.iss.length?v.iss.map(i=>'<div class="iss '+(i[0]==='b'?'b':'w')+'">'+(i[0]==='b'?icon('alert',14):icon('alert',14))+' '+esc(i[1])+'</div>').join(''):'<div class="iss dn">'+icon('check',14)+' All checks passed</div>')+'</div></div></div>'
-   +'<div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">Roster (names written on the sheet)</b><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
-   +(it.ros&&it.ros.length?'<div class="sc rv" style="margin-top:8px"><table class="t"><thead><tr><th>Position</th><th>Name</th><th>Status</th><th></th></tr></thead><tbody>'+it.ros.map((r,i)=>'<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'"></td><td><select data-k="ros.'+i+'.a">'+[[1,'Present'],[0,'Absent'],[2,'Leave']].map(([v,l])=>'<option value="'+v+'" '+(v===r.a?'selected':'')+'>'+l+'</option>').join('')+'</select></td><td><button class="x" data-act="ros-del" data-i="'+i+'">'+icon('x',13)+'</button></td></tr>').join('')+'</tbody></table></div>':'<div class="mu" style="font-size:12.5px;margin-top:6px">Optional. Add names to build the employee attendance grid.</div>');
+   +'<div style="margin-top:12px">'+(v.iss.length?v.iss.map(i=>'<div class="iss '+(i[0]==='b'?'b':'w')+'">'+icon('alert',14)+' '+esc(i[1])+'</div>').join(''):'<div class="iss dn">'+icon('check',14)+' All checks passed</div>')+'</div></div></div></div>';
+  return header+thumbRow+sec1+sec2;
 }
 function closeModal(){$('#modal').innerHTML='';draft=null;rp=null}
 function saveDraft(){
@@ -769,6 +810,7 @@ function saveDraft(){
     if(!/^\d{4}-\d\d-\d\d$/.test(it.date||'')){toast('Enter a valid date');return}
     if(draft.id)Object.assign(S.sheets.find(x=>x.id===draft.id),it);
     else S.sheets.push(Object.assign({},it,{id:uid()}));
+    upsertEmployees(it.ros,it.date,it.agency);
   }
   save();closeModal();render();toast('Saved');
 }
@@ -812,8 +854,11 @@ function act(a,ds){
     case 'close':closeModal();break;
     case 'close-bg':if(ds)closeModal();break;
     case 'save':saveDraft();break;
-    case 'ros-add':draft.data.ros=draft.data.ros||[];draft.data.ros.push({n:'',p:S.settings.positions[0],a:1});renderModal();break;
+    case 'ros-add':draft.data.ros=draft.data.ros||[];draft.data.ros.push({n:'',p:ds.pos||S.settings.positions[0],a:1});renderModal();break;
     case 'ros-del':draft.data.ros.splice(+ds.i,1);syncActual();renderModal();break;
+    case 'req-reset':S.settings.positions.forEach(p=>{draft.data.rows[p]=[S.settings.req[p]||0,(draft.data.rows[p]||[0,0])[1]]});renderModal();break;
+    case 'emp-add':if(!S.employees)S.employees=[];S.employees.push({id:uid(),name:'New employee',position:S.settings.positions[0],agency:S.settings.agencies[0],status:'active',from:today(),to:'',note:''});save();render();break;
+    case 'emp-del':S.employees=(S.employees||[]).filter(e=>e.id!==ds.id);save();render();break;
     case 'print':window.print();break;
     case 'print-save':toast('Choose “Save as PDF” in the print dialog');setTimeout(()=>window.print(),300);break;
     case 'csv':exportCSV(ds.v);break;
@@ -852,6 +897,7 @@ document.addEventListener('change',e=>{
   if(el.matches('[data-import]')){if(el.files[0])importJSON(el.files[0]);return}
   if(el.matches('[data-attfile]')){const fs=[...(el.files||[])];el.value='';if(el.hasAttribute('data-replace')){if(fs[0]&&draft&&draft.kind==='sheet'){(async()=>{draft.data.thumb=await compressImage(await fileToDataURL(fs[0]),480,.5);renderModal()})()}}else if(fs.length)handleAttUpload(fs);return}
   if(el.matches('[data-ai]')){S.settings.ai=S.settings.ai||{key:'',model:'gemini-2.0-flash'};S.settings.ai[el.dataset.ai]=el.value;save();toast('Saved');return}
+  if(el.matches('[data-emp]')){const e=(S.employees||[]).find(x=>x.id===el.dataset.id);if(e){e[el.dataset.emp]=el.value;save()}return}
   if(el.matches('[data-k]')&&draft){setPath(el.dataset.k,readVal(el));if(el.dataset.k.indexOf('ros.')===0)syncActual();renderModal();return}
 });
 
@@ -895,9 +941,10 @@ function init(){
   if(savedTheme)document.documentElement.setAttribute('data-theme',savedTheme);
   paintTheme();
   S=load();
-  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[]};save()}
+  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],employees:[]};save()}
   if(!S.settings.positions)S.settings=defaultSettings();
   if(!S.settings.ai)S.settings.ai={key:'',model:'gemini-2.0-flash'};
+  if(!S.employees)S.employees=[];
   const lg=$('#logo');if(lg&&LOGO)lg.src=LOGO;
   render();
 }
