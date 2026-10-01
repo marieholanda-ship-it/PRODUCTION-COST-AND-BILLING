@@ -613,10 +613,8 @@ function entryBill(){
    +'<div class="card"><h3>Recent bills</h3><div class="sub">Latest '+B.length+' entries</div>'+(B.length?B.map(b=>'<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span><b>'+esc(b.plant)+'</b> <span class="mu">'+esc(b.cat)+' · '+ml(b.per)+'</span></span><span><b>'+peso(b.amt)+'</b> <button class="x" data-act="bill-edit" data-id="'+b.id+'" title="Edit">'+icon('edit',13)+'</button></span></div>').join(''):'<div class="empty">No bills yet.</div>')+'</div></div>';
 }
 function entryAtt(){
-  const A=[...S.sheets].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   const keyOk=!!(S.settings.ai&&S.settings.ai.key);
-  return '<div class="grid g2">'
-   +'<div class="card"><span style="width:44px;height:44px;border-radius:12px;display:inline-grid;place-items:center;color:#fff;background:var(--c3)">'+icon('upload',22)+'</span><h3 style="margin-top:10px">Upload daily attendance</h3><div class="sub">Per shift. Upload a photo/PDF or scan the PRIJ sheet — the app reads it and you just validate.</div>'
+  const upload='<div class="card"><span style="width:44px;height:44px;border-radius:12px;display:inline-grid;place-items:center;color:#fff;background:var(--c3)">'+icon('upload',22)+'</span><h3 style="margin-top:10px">Upload daily attendance</h3><div class="sub">Per shift. Upload a photo/PDF or scan the PRIJ sheet — the app reads it and you just validate. A written name is present; a missing name is absent. Time is not considered.</div>'
    +'<label class="drop" style="display:block;text-align:center">'
    +'<input type="file" data-attfile accept="image/*,application/pdf" multiple hidden>'
    +'<div style="font-size:24px;opacity:.6">'+icon('upload',24)+'</div><b>Drop a photo or tap to browse</b><div class="mu" style="font-size:12px">JPG · PNG · PDF</div></label>'
@@ -625,13 +623,19 @@ function entryAtt(){
    +'<button class="btn g" data-act="print-format">'+icon('print',15)+' Print blank form</button></div>'
    +(keyOk?'':'<div class="iss w" style="margin-top:10px">'+icon('alert',14)+' Auto-read is off — add your Google Gemini API key in Settings.</div>')
    +(upBusy?'<div class="msg" style="margin-top:10px">'+upBusy+'</div>':'')
-   +'</div>'
-   +'<div class="card"><h3>Recent sheets</h3><div class="sub">Latest '+A.length+' · the uploaded photo is kept as proof</div>'+(A.length?A.map(a=>'<div style="display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span style="display:flex;gap:10px;align-items:center;min-width:0">'+thumbImg(a.thumb)+'<span><b>'+esc(a.plant)+'</b><br><span class="mu">'+a.date+' · '+esc(a.shift)+'</span></span></span><span style="display:flex;gap:6px;align-items:center"><button class="x" data-act="open-report" data-plant="'+esc(a.plant)+'" data-date="'+a.date+'" data-shift="'+esc(a.shift)+'" title="View report">'+icon('file',13)+'</button><button class="x" data-act="sheet-edit" data-id="'+a.id+'" title="Edit / validate">'+icon('edit',13)+'</button></span></div>').join(''):'<div class="empty">No sheets yet.</div>')+'</div>'
-  +'</div>'
-  +'<div class="card"><h3>Formats used</h3><div class="sub">The app is built around your PRIJ sheets.</div><div class="grid g2" style="margin:0">'
-   +'<div><b style="font-size:13px">1 · PRIJ Actual Manning (roster)</b><div class="mu" style="font-size:12.5px">Position boxes with handwritten names marked present / absent / leave. Builds the per-employee daily, weekly and monthly attendance.</div></div>'
-   +'<div><b style="font-size:13px">2 · Manning Summary Report</b><div class="mu" style="font-size:12.5px">Required vs Actual per position, grand total and the four sign-offs (Prepared, Checked, Attested, Concurred). Builds fill rate and the shift record.</div></div>'
-   +'</div></div>';
+   +'</div>';
+  return '<div style="display:grid;gap:16px">'+upload+weekGrid()+'</div>';
+}
+function weekGrid(){
+  const days=Array.from({length:7},(_,i)=>addDay(sun(today()),i));
+  const rows=S.settings.attPlants.map(pl=>'<tr><td><b>'+esc(pl)+'</b></td>'+days.map(d=>'<td style="text-align:center;border-left:1px solid var(--line);white-space:nowrap">'+S.settings.shifts.map((sh,si)=>{
+    const s=S.sheets.find(x=>x.plant===pl&&x.date===d&&x.shift===sh);
+    const ok=s&&validate(s).st==='ok';
+    const bg=s?(ok?'background:var(--ok);color:#fff':'background:var(--warn);color:#fff'):'border:1px dashed var(--line);color:var(--mut)';
+    const title=pl+' · '+fD(d)+' · '+sh+': '+(s?(ok?'uploaded & signed':'uploaded (unsigned)'):'not uploaded — click to add');
+    return '<span class="tk" data-act="'+(s?'open-sheet':'week-add')+'" data-id="'+(s?s.id:'')+'" data-plant="'+esc(pl)+'" data-date="'+d+'" data-shift="'+esc(sh)+'" title="'+esc(title)+'" style="'+bg+'">'+(si+1)+'</span>';
+  }).join('')+'</td>').join('')+'</tr>').join('');
+  return '<div class="card"><h3>Attendance by site · this week</h3><div class="sub">'+fD(days[0])+' – '+fD(days[6])+' · Sunday to Saturday · 1 = First, 2 = Second · click a box to open the sheet or an empty box to add</div><div class="sc"><table class="t"><thead><tr><th>Site</th>'+days.map(d=>'<th style="text-align:center;border-left:1px solid var(--line)">'+DW[dow(d)]+'<div class="ax">'+fD(d)+'</div></th>').join('')+'</tr></thead><tbody>'+rows+'</tbody></table></div><div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11.5px;color:var(--mut);margin-top:10px"><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--ok);margin-right:5px"></b>Uploaded &amp; signed</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--warn);margin-right:5px"></b>Uploaded (unsigned)</span><span><b style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1px dashed var(--mut);margin-right:5px"></b>Not uploaded</span></div></div>';
 }
 const thumbImg=t=>t?'<img src="'+t+'" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:none">':'<span style="width:42px;height:42px;border-radius:8px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--mut);flex:none">'+icon('file',16)+'</span>';
 
@@ -691,11 +695,11 @@ async function geminiRead(parts){
   const prompt='You read a Philippine manpower attendance / manning summary sheet (agency PRIJ). '
    +'Return ONLY JSON: {"plant":string,"date":"YYYY-MM-DD","shift":"First"|"Second","agency":string,'
    +'"rows":[{"position":string,"required":number,"actual":number}],'
-   +'"roster":[{"position":string,"name":string,"status":"present"|"absent"|"leave"}],'
+   +'"roster":[{"position":string,"name":string,"status":"present"|"absent"}],'
    +'"declared_total":number|null,'
    +'"signatures":{"prepared":bool,"checked":bool,"attested":bool,"concurred":bool}}. '
    +'Known positions (match each row/name to the closest): '+S.settings.positions.join(', ')+'. '
-   +'Roster: one entry per handwritten name; status "absent" if marked A or crossed out, "leave" if L, else "present". '
+   +'Roster: one entry per name written on the sheet; a written name means "present". Status "absent" only if the name is marked A or crossed out. Time/late is not considered. '
    +'When an actual count is not printed, count present names per position. '
    +'Signatures: true only if a handwritten signature or initials is visible on that line. '
    +'Dates may be DD-MM-YYYY or MM-DD-YYYY; output the valid ISO date. Use "" or null when unreadable.';
@@ -714,7 +718,7 @@ function sheetFromAI(j,thumb){
   d.agency=j.agency||S.settings.agencies[0];
   S.settings.positions.forEach(p=>{d.rows[p]=[S.settings.req[p]||0,0]});
   (j.rows||[]).forEach(r=>{const p=mapPos(r.position);if(p)d.rows[p]=[+r.required||0,+r.actual||0]});
-  d.ros=((j.roster)||[]).filter(r=>r&&r.name).map(r=>({n:String(r.name),p:mapPos(r.position)||S.settings.positions[0],a:r.status==='absent'?0:r.status==='leave'?2:1}));
+  d.ros=((j.roster)||[]).filter(r=>r&&r.name).map(r=>({n:String(r.name),p:mapPos(r.position)||S.settings.positions[0],a:r.status==='absent'?0:1}));
   S.settings.positions.forEach(p=>{const c=d.ros.filter(r=>r.p===p&&r.a===1).length;if(c&&!d.rows[p][1])d.rows[p][1]=c});
   d.decl=(j.declared_total==null?null:+j.declared_total);
   const g=j.signatures||{};d.sig={prep:+!!g.prepared,check:+!!g.checked,att:+!!g.attested,con:+!!g.concurred};
@@ -743,7 +747,7 @@ function renderModal(){
   if(rp){el.innerHTML=reportModalHTML();return}
   if(!draft){el.innerHTML='';return}
   const isBill=draft.kind==='bill';
-  el.innerHTML='<div class="modal-bg" data-act="close-bg"><div class="modal"><div class="mh"><h3>'+(isBill?'Billing entry':'Validate attendance sheet')+'</h3><button class="x" data-act="close">'+icon('x',15)+'</button></div><div class="mb">'+(isBill?billForm():sheetForm())+'</div><div class="mf"><button class="btn g" data-act="close">Cancel</button><button class="btn a" data-act="save">'+(isBill?'Save bill':'Validate &amp; save')+'</button></div></div></div>';
+  el.innerHTML='<div class="modal-bg" data-act="close-bg"><div class="modal"><div class="mh"><h3>'+(isBill?'Billing entry':'Attendance sheet')+'</h3><button class="x" data-act="close">'+icon('x',15)+'</button></div><div class="mb">'+(isBill?billForm():sheetForm())+'</div><div class="mf"><button class="btn g" data-act="close">Cancel</button><button class="btn a" data-act="save">'+(isBill?'Save bill':'Validate &amp; save')+'</button></div></div></div>';
 }
 function reportModalHTML(){
   const rec=getRec(rp.plant,rp.date,rp.shift),v=rec&&validate(rec),plan=planFor(rp.plant,rp.shift);
@@ -786,7 +790,7 @@ function sheetForm(){
   const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Position, then the names written on the sheet.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
    +'<div class="grid g2" style="margin:0">'
    +order.map(p=>{const idxs=grouped[p]||[];return '<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px"><b style="font-size:12px">'+esc(p)+'</b><button class="btn g s" data-act="ros-add" data-pos="'+esc(p)+'" title="Add name">'+icon('plus',12)+'</button></div>'
-     +(idxs.length?idxs.map(i=>{const r=it.ros[i];return '<div style="display:flex;gap:6px;align-items:center;margin:3px 0"><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="flex:1;padding:5px 8px"><select data-k="ros.'+i+'.a" title="Status" style="padding:5px 6px">'+[[1,'P'],[0,'A'],[2,'L']].map(([x,l])=>'<option value="'+x+'" '+(x===r.a?'selected':'')+'>'+l+'</option>').join('')+'</select><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',12)+'</button></div>'}).join(''):'<div class="mu" style="font-size:11.5px;padding:2px 0">—</div>')
+     +(idxs.length?idxs.map(i=>{const r=it.ros[i];return '<div style="display:flex;gap:6px;align-items:center;margin:3px 0"><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="flex:1;padding:5px 8px"><select data-k="ros.'+i+'.a" title="Present or absent" style="padding:5px 6px">'+[[1,'P'],[0,'A']].map(([x,l])=>'<option value="'+x+'" '+(x===r.a?'selected':'')+'>'+l+'</option>').join('')+'</select><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',12)+'</button></div>'}).join(''):'<div class="mu" style="font-size:11.5px;padding:2px 0">—</div>')
      +'</div>'}).join('')
    +'</div></div>';
   const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section II · Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g s" data-act="req-reset" title="Restore system default required">'+icon('refresh',14)+' Reset required</button></div>'
@@ -848,6 +852,8 @@ function act(a,ds){
     case 'bill-edit':startBill(ds.id);break;
     case 'sheet-new':startSheet();break;
     case 'sheet-edit':startSheet(ds.id);break;
+    case 'open-sheet':startSheet(ds.id);break;
+    case 'week-add':startSheet(null,Object.assign(blankSheet(),{plant:ds.plant,date:ds.date,shift:ds.shift}));break;
     case 'del':if(ds.kind==='bill')S.bills=S.bills.filter(x=>x.id!==ds.id);else S.sheets=S.sheets.filter(x=>x.id!==ds.id);save();render();toast('Deleted');break;
     case 'row':open[ds.id]=!open[ds.id];render();break;
     case 'more':lim+=60;render();break;
