@@ -753,8 +753,10 @@ function sheetFromAI(j,thumb){
   d.shift=S.settings.shifts.includes(j.shift)?j.shift:S.settings.shifts[0];
   d.agency=j.agency||S.settings.agencies[0];
   S.settings.positions.forEach(p=>{d.rows[p]=[S.settings.req[p]||0,0]});
-  (j.rows||[]).forEach(r=>{const p=mapPos(r.position);if(p)d.rows[p]=[+r.required||0,+r.actual||0]});
-  d.ros=((j.roster)||[]).filter(r=>r&&r.name).map(r=>({n:String(r.name),p:mapPos(r.position)||S.settings.positions[0],a:r.status==='absent'?0:1}));
+  const rowsList=j.rows||j.positions||[];
+  rowsList.forEach(r=>{const p=mapPos(r.position||r.pos||r.p);if(p)d.rows[p]=[+(r.required!=null?r.required:r.req)||0,+(r.actual!=null?r.actual:r.act)||0]});
+  const rosterList=j.roster||j.names||j.employees||[];
+  d.ros=rosterList.filter(r=>r&&(r.name||r.n)).map(r=>{const st=(r.status!=null?r.status:r.a);return{n:String(r.name||r.n).trim(),p:mapPos(r.position||r.pos||r.p)||S.settings.positions[0],a:(st==='absent'||st===0||st===false)?0:1}});
   S.settings.positions.forEach(p=>{const c=d.ros.filter(r=>r.p===p&&r.a===1).length;if(c&&!d.rows[p][1])d.rows[p][1]=c});
   d.decl=(j.declared_total==null?null:+j.declared_total);
   const g=j.signatures||{};d.sig={prep:+!!g.prepared,check:+!!g.checked,att:+!!g.attested,con:+!!g.concurred};
