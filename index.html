@@ -699,7 +699,7 @@ async function geminiCall(model,key,body){
   return r.json();
 }
 const aiText=j=>((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts)||[]).map(p=>p.text||'').join('');
-const aiRetriable=e=>(e&&e.status===404)||/not found|not supported|does not exist|no longer/i.test(String(e&&e.message));
+const aiRetriable=e=>{const s=e&&e.status;const m=String(e&&e.message);return s===404||s===429||s===500||s===503||/not found|not supported|does not exist|no longer|high demand|overload|try again|rate limit|quota|unavailable|temporarily/i.test(m)};
 async function listModels(key){
   const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(key));
   if(!r.ok){const t=await r.text();const e=new Error('HTTP '+r.status+' '+t.slice(0,160));e.status=r.status;throw e}
@@ -734,8 +734,10 @@ async function geminiRead(parts){
   const tries=[configured].concat(discovered,AI_MODELS).filter((v,i,a)=>v&&a.indexOf(v)===i);
   let lastErr;
   for(const m of tries){
-    try{const j=await geminiCall(m,ai.key,body);S.settings.ai.model=m;save();lastAIRaw=aiText(j);return parseAIJSON(lastAIRaw)}
-    catch(e){lastErr=e;if(!aiRetriable(e))throw e}
+    for(let attempt=0;attempt<2;attempt++){
+      try{const j=await geminiCall(m,ai.key,body);S.settings.ai.model=m;save();lastAIRaw=aiText(j);return parseAIJSON(lastAIRaw)}
+      catch(e){lastErr=e;if(!aiRetriable(e))throw e;if(attempt===0)await new Promise(r=>setTimeout(r,1500))}
+    }
   }
   throw lastErr;
 }
@@ -783,7 +785,7 @@ async function handleAttUpload(files){
   if(!ai.key){upErr='Auto-read needs a Google Gemini API key — add it in Settings.';startSheet(null,Object.assign(blankSheet(),{thumb:thumb}));return}
   upBusy='Reading the sheet with AI…';render();
   try{const j=await geminiRead(parts);upBusy='';upErr='';lastAIErr='';startSheet(null,sheetFromAI(j,thumb),true)}
-  catch(e){const msg=String((e&&e.message)||e).slice(0,240);upBusy='';upErr='AI could not read the sheet: '+msg;lastAIErr=msg;render();startSheet(null,Object.assign(blankSheet(),{thumb:thumb}),true)}
+  catch(e){let msg=String((e&&e.message)||e).slice(0,240);if(/503|high demand|overload|unavailable|temporarily/i.test(msg))msg="Google's AI model is busy right now (temporary) — it retried automatically. Please try again in a moment.";upBusy='';upErr='AI could not read the sheet: '+msg;lastAIErr=msg;render();startSheet(null,Object.assign(blankSheet(),{thumb:thumb}),true)}
 }
 function renderModal(){
   const el=$('#modal');
