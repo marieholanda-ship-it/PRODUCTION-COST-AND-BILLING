@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v10';
+const BUILD='build 2026-10-01 · v11';
 
 /* ---------- tiny helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -529,10 +529,13 @@ const empKey=n=>String(n||'').toLowerCase().replace(/[^a-z0-9\s]+/g,' ').replace
 function findEmp(name){const k=empKey(name);return (S.employees||[]).find(e=>empKey(e.name)===k)}
 function upsertEmployees(ros,date,agency){
   if(!S.employees)S.employees=[];
+  const out=[];
   (ros||[]).forEach(r=>{if(!r.n||!String(r.n).trim())return;const k=empKey(r.n);let e=S.employees.find(x=>empKey(x.name)===k);
-    if(!e){S.employees.push({id:uid(),name:String(r.n).trim(),position:r.p||'',agency:agency||'',status:'active',from:date||today(),to:'',note:''})}
+    if(!e){e={id:uid(),name:String(r.n).trim(),position:r.p||'',agency:agency||'',status:'active',from:date||today(),to:'',note:''};S.employees.push(e)}
     else{e.name=String(r.n).trim();if(r.p)e.position=r.p;if(agency&&!e.agency)e.agency=agency}
+    out.push(e);
   });
+  return out;
 }
 function empStats(e,plant,period){
   const k=empKey(e.name);let P=0,A=0,L=0;const days=new Set();
@@ -740,6 +743,11 @@ function pageSettings(){
    +'<div class="field"><label class="f">Model</label><input data-ai="model" value="'+esc((S.settings.ai&&S.settings.ai.model)||'gemini-2.0-flash')+'"></div></div>'
    +'<div class="fgroup" style="margin-top:4px"><button class="btn g" data-act="ai-test">'+icon('check',15)+' Test AI connection</button></div>'
    +'<div class="mu" style="font-size:12px">Get a free key at aistudio.google.com &rarr; Get API key. If the model above is unavailable it is switched automatically.</div></div>'
+   +'<div class="card" style="margin-bottom:16px"><h3>Google Sheets sync</h3><div class="sub">Every saved bill / attendance is also sent to your Google Sheet. Create the Apps Script, then paste the Web App URL and your secret token.</div>'
+   +'<div class="grid g2" style="margin:0"><div class="field"><label class="f">Web App URL</label><input data-sheet="url" value="'+esc((S.settings.sheet&&S.settings.sheet.url)||'')+'" placeholder="https://script.google.com/macros/s/.../exec"></div>'
+   +'<div class="field"><label class="f">Token</label><input type="password" data-sheet="token" value="'+esc((S.settings.sheet&&S.settings.sheet.token)||'')+'" placeholder="your secret token" autocomplete="off"></div></div>'
+   +'<div class="fgroup" style="margin-top:4px"><button class="btn g" data-act="sheet-test">'+icon('check',15)+' Test</button><button class="btn g" data-act="sheet-push-all">'+icon('upload',15)+' Sync all now</button><button class="btn g" data-act="sheet-pull">'+icon('download',15)+' Import from Sheet</button></div>'
+   +'<div class="mu" style="font-size:12px;margin-top:6px">Keep the token secret — anyone with the URL + token can write to your sheet.</div></div>'
    +'<div class="card"><h3>Data &amp; backup</h3><div class="sub">Everything is stored in this browser only. Export regularly.</div>'
    +'<div class="fgroup"><button class="btn g" data-act="json">'+icon('download',15)+' Export backup (JSON)</button>'
    +'<label class="btn g" style="cursor:pointer">'+icon('upload',15)+' Import backup<input type="file" accept="application/json" data-import hidden></label>'
@@ -888,6 +896,31 @@ async function testAI(){
     toast('AI works — '+m+' · '+list.length+' models available');
   }catch(e){toast('AI error: '+String(e.message).slice(0,160))}
 }
+/* ---------- Google Sheets sync (Apps Script Web App) ---------- */
+function sheetCfg(){return S.settings.sheet||{}}
+function sheetRows(type,arr){return (arr||[]).map(d=>({type:type,data:d}))}
+async function sheetPush(rows){
+  const c=sheetCfg();if(!c.url||!c.token||!rows.length)return;
+  try{await fetch(c.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:c.token,rows:rows})})}catch(e){}
+}
+function sheetMerge(local,remote){const m={};(local||[]).forEach(x=>m[x.id]=x);(remote||[]).forEach(x=>{if(x&&x.id)m[x.id]=x});return Object.values(m)}
+async function sheetPushAll(){
+  const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
+  const rows=[].concat(sheetRows('bill',S.bills),sheetRows('sheet',S.sheets),sheetRows('employee',S.employees));
+  toast('Sending '+rows.length+' records…');await sheetPush(rows);toast('Sent to Google Sheet');
+}
+async function sheetPull(){
+  const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
+  try{const r=await fetch(c.url+'?token='+encodeURIComponent(c.token));const j=await r.json();
+    S.bills=sheetMerge(S.bills,j.bills);S.sheets=sheetMerge(S.sheets,j.sheets);S.employees=sheetMerge(S.employees,j.employees);
+    save();render();toast('Imported from Google Sheet');
+  }catch(e){toast('Import failed — check URL/token/deployment (CORS).')}
+}
+async function sheetTest(){
+  const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
+  try{const r=await fetch(c.url+'?token='+encodeURIComponent(c.token));const j=await r.json();toast(j.ok?'Sheet OK — '+(j.bills||[]).length+' bills · '+(j.sheets||[]).length+' sheets':'Sheet error: '+(j.error||'unknown'))}
+  catch(e){toast('Cannot reach the sheet (check URL / deployment / CORS)')}
+}
 function sheetFromAI(j,thumb){
   const d=blankSheet();
   d.plant=guessPlant(j.plant)||S.settings.attPlants[0];
@@ -1028,18 +1061,21 @@ function closeModal(){$('#modal').innerHTML='';draft=null;rp=null;pcal=null;pday
 function saveDraft(){
   const it=draft.data;
   if(!it.plant){toast('Select a plant');return}
+  let saved,emps=[];
   if(draft.kind==='bill'){
     if(!it.per){toast('Select a billing period');return}
-    if(draft.id)Object.assign(S.bills.find(x=>x.id===draft.id),it);
-    else S.bills.push(Object.assign({},it,{id:uid()}));
+    if(draft.id){saved=S.bills.find(x=>x.id===draft.id);Object.assign(saved,it)}
+    else{saved=Object.assign({},it,{id:uid()});S.bills.push(saved)}
+    sheetPush([{type:'bill',data:saved}]);
   }else{
     if(!/^\d{4}-\d\d-\d\d$/.test(it.date||'')){toast('Enter a valid date');return}
     if(it.decl==null||it.decl===''){toast('Declared total is required before you can validate');return}
     if(it.agency&&S.settings.agencies.indexOf(it.agency)<0)S.settings.agencies.push(it.agency);
-    if(draft.id)Object.assign(S.sheets.find(x=>x.id===draft.id),it);
-    else S.sheets.push(Object.assign({},it,{id:uid()}));
-    upsertEmployees(it.ros,it.date,it.agency);
+    if(draft.id){saved=S.sheets.find(x=>x.id===draft.id);Object.assign(saved,it)}
+    else{saved=Object.assign({},it,{id:uid()});S.sheets.push(saved)}
+    emps=upsertEmployees(it.ros,it.date,it.agency);
     gridWeek=sun(it.date);
+    sheetPush([{type:'sheet',data:saved}].concat(sheetRows('employee',emps)));
   }
   save();closeModal();render();toast('Saved');
 }
@@ -1103,6 +1139,9 @@ function act(a,ds){
     case 'csv':exportCSV(ds.v);break;
     case 'json':exportJSON();break;
     case 'ai-test':testAI();break;
+    case 'sheet-test':sheetTest();break;
+    case 'sheet-push-all':sheetPushAll();break;
+    case 'sheet-pull':sheetPull();break;
     case 'save-settings':save();render();toast('Settings saved');break;
     case 'copy-diag':try{navigator.clipboard.writeText(diagText());toast('Diagnostics copied — paste to support')}catch(e){toast('Copy failed — select the text above manually')}break;
     case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];save();render();toast('All data cleared')}break;
@@ -1150,6 +1189,7 @@ document.addEventListener('change',e=>{
   if(el.matches('[data-byear]')){const y=window.scrollY;bMonth=el.value+'-'+bMonth.slice(5,7);render();window.scrollTo(0,y);return}
   if(el.matches('[data-wk]')){const y=window.scrollY;gridWeek=el.value;render();window.scrollTo(0,y);return}
   if(el.matches('[data-ai]')){S.settings.ai=S.settings.ai||{key:'',model:'gemini-2.0-flash'};S.settings.ai[el.dataset.ai]=el.value;save();toast('Saved');return}
+  if(el.matches('[data-sheet]')){S.settings.sheet=S.settings.sheet||{url:'',token:''};S.settings.sheet[el.dataset.sheet]=el.value;save();toast('Saved');return}
   if(el.matches('[data-emp]')){const e=(S.employees||[]).find(x=>x.id===el.dataset.id);if(e){e[el.dataset.emp]=el.value;save()}return}
   if(el.matches('[data-k]')&&draft){setPath(el.dataset.k,readVal(el));if(el.dataset.k.indexOf('ros.')===0)syncActual();draft.dirty=true;setTimeout(renderModal,0);return}
 });
@@ -1184,7 +1224,7 @@ function render(){
   $('#view').innerHTML=head+(nav==='settings'?'':subTabs())+currentView();
   window.scrollTo({top:0,behavior:'instant'});
 }
-function defaultSettings(){return{plants:DEFAULT_PLANTS.slice(),attPlants:DEFAULT_ATT_PLANTS.slice(),shifts:DEFAULT_SHIFTS.slice(),cats:DEFAULT_CATS.slice(),positions:DEFAULT_POSITIONS.slice(),req:Object.assign({},DEFAULT_REQ),agencies:DEFAULT_AGENCIES.slice(),ai:{key:'',model:'gemini-2.0-flash'}}}
+function defaultSettings(){return{plants:DEFAULT_PLANTS.slice(),attPlants:DEFAULT_ATT_PLANTS.slice(),shifts:DEFAULT_SHIFTS.slice(),cats:DEFAULT_CATS.slice(),positions:DEFAULT_POSITIONS.slice(),req:Object.assign({},DEFAULT_REQ),agencies:DEFAULT_AGENCIES.slice(),ai:{key:'',model:'gemini-2.0-flash'},sheet:{url:'',token:''}}}
 
 /* ============================================================
    INIT
@@ -1198,6 +1238,7 @@ function init(){
   if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],employees:[]};save()}
   if(!S.settings.positions)S.settings=defaultSettings();
   if(!S.settings.ai)S.settings.ai={key:'',model:'gemini-2.0-flash'};
+  if(!S.settings.sheet)S.settings.sheet={url:'',token:''};
   if(!S.employees)S.employees=[];
   const lg=$('#logo');if(lg&&LOGO)lg.src=LOGO;
   render();
