@@ -671,7 +671,7 @@ function emptyBox(t,d){
    ============================================================ */
 function readVal(el){if(el.type==='checkbox')return el.checked?1:0;if(el.type==='number')return el.value===''?null:+el.value;return el.value}
 function setPath(path,val){const parts=path.split('.');let o=draft.data;for(let i=0;i<parts.length-1;i++){o=o[parts[i]]=o[parts[i]]||{}}o[parts[parts.length-1]]=val}
-function syncActual(){const it=draft.data;if(!it.ros)return;S.settings.positions.forEach(p=>{const L=it.ros.filter(r=>r.p===p);if(L.length){it.rows[p]=it.rows[p]||[0,0];it.rows[p][1]=L.filter(r=>r.a===1).length}})}
+function syncActual(){const it=draft.data;if(!it.ros)return;S.settings.positions.forEach(p=>{const L=it.ros.filter(r=>r.p===p);if(L.length){it.rows[p]=it.rows[p]||[0,0];it.rows[p][1]=L.length}})}
 function startBill(id){
   const src=id?S.bills.find(x=>x.id===id):{plant:'',cat:S.settings.cats[0],vendor:'',inv:'',per:curMonth(),amt:''};
   draft={kind:'bill',id:id||null,data:JSON.parse(JSON.stringify(src))};renderModal();
@@ -762,8 +762,8 @@ function sheetFromAI(j,thumb){
   const rowsList=j.rows||j.positions||[];
   rowsList.forEach(r=>{const p=mapPos(r.position||r.pos||r.p);if(p)d.rows[p]=[+(r.required!=null?r.required:r.req)||0,+(r.actual!=null?r.actual:r.act)||0]});
   const rosterList=j.roster||j.names||j.employees||[];
-  d.ros=rosterList.filter(r=>r&&(r.name||r.n)).map(r=>{const st=(r.status!=null?r.status:r.a);return{n:String(r.name||r.n).trim(),p:mapPos(r.position||r.pos||r.p)||S.settings.positions[0],a:(st==='absent'||st===0||st===false)?0:1}});
-  S.settings.positions.forEach(p=>{const c=d.ros.filter(r=>r.p===p&&r.a===1).length;if(c&&!d.rows[p][1])d.rows[p][1]=c});
+  d.ros=rosterList.filter(r=>r&&(r.name||r.n)).map(r=>({n:String(r.name||r.n).trim(),p:mapPos(r.position||r.pos||r.p)||S.settings.positions[0],a:1}));
+  S.settings.positions.forEach(p=>{const c=d.ros.filter(r=>r.p===p).length;if(c)d.rows[p][1]=c});
   d.decl=(j.declared_total==null?null:+j.declared_total);
   const g=j.signatures||{};d.sig={prep:+!!g.prepared,check:+!!g.checked,att:+!!g.attested,con:+!!g.concurred};
   d.aiNote=(j.notes||j.note||'').toString().slice(0,400);
@@ -830,22 +830,20 @@ function sheetForm(){
   const thumbRow='<div style="display:flex;gap:10px;align-items:center;margin:0 0 14px">'
    +(it.thumb?'<img src="'+it.thumb+'" alt="sheet" style="width:72px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--line)">':'<span style="width:72px;height:72px;border-radius:10px;border:1px dashed var(--line);display:grid;place-items:center;color:var(--mut)">'+icon('file',20)+'</span>')
    +'<label class="btn g s" style="cursor:pointer">'+icon('upload',14)+' '+(it.thumb?'Replace':'Attach')+' photo<input type="file" data-attfile data-replace hidden accept="image/*,application/pdf"></label></div>';
-  const grouped={};(it.ros||[]).forEach((r,i)=>{(grouped[r.p]=grouped[r.p]||[]).push(i)});
-  const order=S.settings.positions.concat(Object.keys(grouped).filter(p=>S.settings.positions.indexOf(p)<0));
-  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Position, then the names written on the sheet.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
-   +'<div class="grid g2" style="margin:0">'
-   +order.map(p=>{const idxs=grouped[p]||[];return '<div style="border:1px solid var(--line);border-radius:10px;padding:8px 10px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px"><b style="font-size:12px">'+esc(p)+'</b><button class="btn g s" data-act="ros-add" data-pos="'+esc(p)+'" title="Add name">'+icon('plus',12)+'</button></div>'
-     +(idxs.length?idxs.map(i=>{const r=it.ros[i];return '<div style="display:flex;gap:6px;align-items:center;margin:3px 0"><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="flex:1;padding:5px 8px"><select data-k="ros.'+i+'.a" title="Present or absent" style="padding:5px 6px">'+[[1,'P'],[0,'A']].map(([x,l])=>'<option value="'+x+'" '+(x===r.a?'selected':'')+'>'+l+'</option>').join('')+'</select><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',12)+'</button></div>'}).join(''):'<div class="mu" style="font-size:11.5px;padding:2px 0">—</div>')
-     +'</div>'}).join('')
-   +'</div></div>';
-  const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section II · Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g s" data-act="req-reset" title="Restore system default required">'+icon('refresh',14)+' Reset required</button></div>'
+  const posOrder=p=>{const k=S.settings.positions.indexOf(p);return k<0?999:k};
+  const sortedRos=(it.ros||[]).map((r,i)=>({r:r,i:i})).sort((a,b)=>posOrder(a.r.p)-posOrder(b.r.p));
+  const sec1='<div class="card" style="margin:0 0 14px;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section I · Actual manning</h3><div class="sub" style="margin:0">Names written on the sheet. A name here = present; a person not listed = absent.</div></div><button class="btn g s" data-act="ros-add">'+icon('plus',14)+' Add name</button></div>'
+   +'<div class="sc rv"><table class="t"><thead><tr><th style="width:40%">Position</th><th>Name</th><th style="width:44px"></th></tr></thead><tbody>'
+   +(sortedRos.length?sortedRos.map(o=>{const r=o.r,i=o.i;return '<tr><td><select data-k="ros.'+i+'.p">'+S.settings.positions.map(p=>'<option '+(p===r.p?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></td><td><input data-k="ros.'+i+'.n" value="'+esc(r.n)+'" placeholder="Name" style="width:100%;min-width:150px"></td><td><button class="x" data-act="ros-del" data-i="'+i+'" title="Remove">'+icon('x',13)+'</button></td></tr>'}).join(''):'<tr><td colspan="3" class="mu" style="padding:14px">No names yet — click Add name.</td></tr>')
+   +'</tbody></table></div></div>';
+  const sec2='<div class="card" style="margin:0;box-shadow:none"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px"><div><h3>Section II · Validation</h3><div class="sub" style="margin:0">Required vs actual, signatures and checks. Default required is prefilled from the system.</div></div><button class="btn g" data-act="req-reset" title="Restore the system default required manning">'+icon('refresh',14)+' Reset to system defaults</button></div>'
    +'<div class="grid g21" style="margin:0"><div><div class="sc rv"><table class="t"><thead><tr><th>Position</th><th>Required</th><th>Actual</th><th>Gap</th></tr></thead><tbody>'
    +S.settings.positions.map(p=>{const r=it.rows[p]||[0,0],g=r[1]-r[0];return '<tr><td>'+esc(p)+'</td><td><input type="number" min="0" data-k="rows.'+p+'.0" value="'+r[0]+'"></td><td><input type="number" min="0" data-k="rows.'+p+'.1" value="'+r[1]+'"></td><td class="'+(g<0?'up':g>0?'mu':'')+'"><b>'+(g?(g>0?'+':'')+g:'—')+'</b></td></tr>'}).join('')
    +'<tr class="tot"><td>Grand total</td><td>'+v.rq+'</td><td>'+v.ac+'</td><td></td></tr></tbody></table></div></div>'
    +'<div><b style="font-size:12px">Signatures</b><div class="sub" style="margin:4px 0 8px">Tick each signature visible on the sheet.</div>'
    +SIGS.map(([k,l])=>'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;margin:6px 0"><input type="checkbox" data-k="sig.'+k+'" '+(it.sig[k]?'checked':'')+'> '+esc(l)+'</label>').join('')
    +'<div style="margin-top:12px">'+(v.iss.length?v.iss.map(i=>'<div class="iss '+(i[0]==='b'?'b':'w')+'">'+icon('alert',14)+' '+esc(i[1])+'</div>').join(''):'<div class="iss dn">'+icon('check',14)+' All checks passed</div>')+'</div></div></div></div>';
-  return header+aiBanner(it)+thumbRow+aiDebugBox()+sec1+sec2;
+  return header+aiBanner(it)+thumbRow+aiDebugBox(it)+sec1+sec2;
 }
 function aiBanner(it){
   const n=(it.ros||[]).length;let b='';
@@ -855,8 +853,9 @@ function aiBanner(it){
   return b;
 }
 function diagText(){return JSON.stringify({build:BUILD,model:(S.settings.ai&&S.settings.ai.model)||'',error:lastAIErr||'',raw:lastAIRaw||''},null,2)}
-function aiDebugBox(){
-  if(!lastAIRaw&&!lastAIErr)return '';
+function aiDebugBox(it){
+  const noNames=((it&&it.ros?it.ros.length:0)===0)&&!!lastAIRaw;
+  if(!lastAIErr&&!noNames)return '';
   const body=(lastAIErr?'ERROR: '+lastAIErr+'\n\n':'')+(lastAIRaw||'');
   return '<details open style="margin:0 0 14px"><summary style="cursor:pointer;font-size:12px;color:var(--mut)">AI diagnostics (for support)</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:11px;max-height:260px;overflow:auto;background:var(--soft);padding:10px;border-radius:8px;border:1px solid var(--line)">'+esc(body.slice(0,6000))+'</pre><div style="margin:8px 0 0"><button class="btn g s" data-act="copy-diag">'+icon('download',13)+' Copy diagnostics</button></div></details>';
 }
