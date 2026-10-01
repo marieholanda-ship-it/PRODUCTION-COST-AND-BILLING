@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v8';
+const BUILD='build 2026-10-01 · v9';
 
 /* ---------- tiny helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -652,7 +652,7 @@ function individualSection(){
     sheets.forEach(s=>(s.ros||[]).forEach(r=>{if(!r.n)return;const k=empKey(r.n);const e=map[k]=map[k]||{n:r.n,p:r.p||'',days:new Set()};e.days.add(s.date);if(r.p)e.p=r.p}));
     const rows=Object.values(map).sort((a,b)=>a.n.localeCompare(b.n));
     if(!rows.length)body='<div class="mu" style="padding:12px 0">No individuals recorded for the selected plant, month and agency.</div>';
-    else body='<div class="sc"><table class="t"><thead><tr><th>Name</th><th>Position</th><th class="r">Days present</th><th class="r">Absent</th><th>Attendance</th></tr></thead><tbody>'+rows.map(e=>{const P=e.days.size,tot=reportDays.size,A=Math.max(0,tot-P),rate=tot?P/tot*100:100;return '<tr style="cursor:pointer" data-act="ind-person" data-name="'+esc(e.n)+'"><td><b>'+esc(e.n)+'</b></td><td>'+esc(e.p)+'</td><td class="r">'+P+'</td><td class="r '+(A?'up':'')+'">'+A+'</td><td>'+fillPill(rate)+'</td></tr>'}).join('')+'</tbody></table></div>';
+    else body='<div class="sc"><table class="t"><thead><tr><th style="min-width:180px">Name</th><th style="min-width:150px">Position</th><th class="r" style="width:120px;white-space:nowrap">Days present</th><th class="r" style="width:90px">Absent</th><th style="width:130px">Attendance</th></tr></thead><tbody>'+rows.map(e=>{const P=e.days.size,tot=reportDays.size,A=Math.max(0,tot-P),rate=tot?P/tot*100:100;return '<tr style="cursor:pointer" data-act="ind-person" data-name="'+esc(e.n)+'"><td><b>'+esc(e.n)+'</b></td><td>'+esc(e.p)+'</td><td class="r" style="white-space:nowrap">'+P+'</td><td class="r '+(A?'up':'')+'" style="white-space:nowrap">'+A+'</td><td style="white-space:nowrap">'+fillPill(rate)+'</td></tr>'}).join('')+'</tbody></table></div>';
   }
   return '<div class="card"><h3>Individual attendance</h3><div class="fgroup" style="margin-bottom:10px"><select data-ind="plant"><option value="">— Select plant —</option>'+plantOpts+'</select><select data-indmm>'+monthOpts+'</select><select data-indyy>'+yearOpts+'</select><select data-inda>'+agOpts+'</select></div>'+body+'</div>';
 }
@@ -1059,7 +1059,7 @@ document.addEventListener('change',e=>{
   if(el.matches('[data-wk]')){const y=window.scrollY;gridWeek=el.value;render();window.scrollTo(0,y);return}
   if(el.matches('[data-ai]')){S.settings.ai=S.settings.ai||{key:'',model:'gemini-2.0-flash'};S.settings.ai[el.dataset.ai]=el.value;save();toast('Saved');return}
   if(el.matches('[data-emp]')){const e=(S.employees||[]).find(x=>x.id===el.dataset.id);if(e){e[el.dataset.emp]=el.value;save()}return}
-  if(el.matches('[data-k]')&&draft){setPath(el.dataset.k,readVal(el));if(el.dataset.k.indexOf('ros.')===0)syncActual();draft.dirty=true;renderModal();return}
+  if(el.matches('[data-k]')&&draft){setPath(el.dataset.k,readVal(el));if(el.dataset.k.indexOf('ros.')===0)syncActual();draft.dirty=true;setTimeout(renderModal,0);return}
 });
 
 /* ============================================================
