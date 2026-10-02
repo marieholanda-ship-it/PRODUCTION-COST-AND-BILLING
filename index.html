@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v22';
+const BUILD='build 2026-10-01 · v23';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -1211,7 +1211,7 @@ function saveDraft(){
     if(!it.per){toast('Select a billing period');return}
     if(draft.id){saved=S.bills.find(x=>x.id===draft.id);Object.assign(saved,it)}
     else{saved=Object.assign({},it,{id:uid()});S.bills.push(saved)}
-    const bdata=stripImgs(saved);if(saved.imgs&&saved.imgs[0])bdata.img=saved.imgs[0];pushRows([{type:'bill',data:bdata}]);
+    pushRows([{type:'bill',data:stripImgs(saved)}]);
   }else if(draft.kind==='man'){
     const r=Object.assign({id:uid()},it);S.man=S.man||[];S.man.push(r);pushRows([{type:'manpower',data:stripImgs(r)}]);save();closeModal();render();toast('Manpower record saved');return;
   }else{
