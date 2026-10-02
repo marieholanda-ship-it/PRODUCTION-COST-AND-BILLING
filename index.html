@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v27';
+const BUILD='build 2026-10-01 · v28';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -447,7 +447,7 @@ function costMulti(series,pers,fmt){if(!pers.length)return '<p class="mu">No mon
 function costDvg(D,fmt){const m=Math.max.apply(null,D.map(x=>Math.abs(x.v)).concat([.001])),mid=290,rh=26;
  return '<svg viewBox="0 0 520 '+(D.length*rh+6)+'" class="ch" style="max-height:280px"><line x1="'+mid+'" x2="'+mid+'" y1="0" y2="'+(D.length*rh)+'" class="gl"/>'+D.map((x,i)=>{const w=Math.abs(x.v)/m*150,up=x.v>=0;return '<text x="0" y="'+(i*rh+17)+'"'+(x.n==='TOTAL'?' style="fill:var(--ink);font-weight:700"':' class="ax"')+'>'+esc(x.n)+'</text><rect x="'+(up?mid:mid-w)+'" y="'+(i*rh+4)+'" width="'+Math.max(w,1)+'" height="17" rx="2" fill="'+(up?'#c0392b':'#4d8a1f')+'"/><text x="'+(up?mid+w+4:mid-w-4)+'" text-anchor="'+(up?'start':'end')+'" y="'+(i*rh+17)+'" style="fill:var(--ink);font-weight:700">'+fmt(x.v)+'</text>'}).join('')+'</svg>'}
 function pageCost(){
-  if(!S.costs)S.costs=costSeed();
+  if(!S.costs)S.costs=[];
   const cost=S.costs;
   const wt=cost.filter(r=>r.plant==='NATIONAL W/ TOLL');
   const nt=[...wt].reverse().find(r=>costParsePeriod(r.period)!=null)||wt[wt.length-1];
@@ -701,13 +701,7 @@ function entryBill(){
    +(upBusy?'<div class="busy"><span class="spin"></span>'+esc(upBusy)+'</div>':'')
    +(upErr?'<div class="iss w" style="margin-top:10px">'+icon('alert',14)+' '+esc(upErr)+'</div>':'')
    +'</div>';
-  const man='<div class="card"><span style="width:44px;height:44px;border-radius:12px;display:inline-grid;place-items:center;color:#fff;background:var(--c4)">'+icon('users',22)+'</span><h3 style="margin-top:10px">Manpower agency billing</h3><div class="sub">Scan an agency manpower billing sheet — the AI fills the manpower record (HC, volume, OT, payable…). Review, then Save; it then shows under Dashboard → Manpower.</div>'
-   +'<label class="drop" style="display:block;text-align:center"><input type="file" data-manfile accept="image/*,application/pdf" hidden><div style="font-size:24px;opacity:.6">'+icon('upload',24)+'</div><b>Drop a photo or tap to browse</b><div class="mu" style="font-size:12px">JPG · PNG · PDF</div></label>'
-   +(keyOk?'':'<div class="iss w" style="margin-top:10px">'+icon('alert',14)+' Auto-read is off — add your Google Gemini API key in Settings.</div>')
-   +(upBusy?'<div class="busy"><span class="spin"></span>'+esc(upBusy)+'</div>':'')
-   +(upErr?'<div class="iss w" style="margin-top:10px">'+icon('alert',14)+' '+esc(upErr)+'</div>':'')
-   +'</div>';
-  return '<div style="display:grid;gap:16px">'+upload+man+billingSiteSection()+'</div>';
+  return '<div style="display:grid;gap:16px">'+upload+billingSiteSection()+'</div>';
 }
 function usageOf(b){if(b.kwh)return Number(b.kwh).toLocaleString('en-PH');const d=(b.details||[]).find(x=>/m3|cubic|cu\.? ?m|litre|liter/i.test(x.label));return d&&d.value?d.value:'—'}
 function billingSiteSection(){
@@ -722,7 +716,7 @@ function billingSiteSection(){
       const list=S.bills.filter(b=>b.plant===bPlant&&b.cat===c&&(!bMonth||b.per===bMonth)).sort((a,b)=>String(a.date||a.per).localeCompare(String(b.date||b.per)));
       const usageHead=c==='Electricity'?'kWh':'Usage';
       const rows=list.map(b=>'<tr style="cursor:pointer" data-act="bview" data-id="'+b.id+'" title="Click to view the bill"><td style="white-space:nowrap">'+(b.date?fD(b.date):ml(b.per))+'</td><td>'+esc(b.vendor||'—')+'</td><td class="mu">'+esc(b.inv||'—')+'</td><td class="r" style="white-space:nowrap">'+usageOf(b)+'</td><td class="r" style="white-space:nowrap">'+(b.multiplier?b.multiplier:'—')+'</td><td class="r" style="white-space:nowrap"><b>'+peso(b.amt)+'</b></td></tr>').join('');
-      tables+='<div class="card" style="margin-top:12px"><h3>'+esc(c)+' · '+ml(bMonth)+'</h3><div class="sub">'+(list.length?list.length+' entr'+(list.length===1?'y':'ies')+' · total '+peso(sum(list,b=>b.amt))+' · click a row to view the bill':'No entry for this month')+'</div>'+(list.length?'<div class="sc"><table class="t"><thead><tr><th style="width:120px">Date</th><th style="min-width:160px">Vendor</th><th style="min-width:140px">Bill / Inv</th><th class="r" style="width:120px;white-space:nowrap">'+usageHead+'</th><th class="r" style="width:110px;white-space:nowrap">Multiplier</th><th class="r" style="width:130px;white-space:nowrap">Amount</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')+'</div>';
+      tables+='<div class="card" style="margin-top:12px"><h3>'+esc(c)+' · '+ml(bMonth)+'</h3><div class="sub">'+(list.length?list.length+' entr'+(list.length===1?'y':'ies')+' · total '+peso(sum(list,b=>b.amt))+' · click a row to view the bill':'No entry for this month')+'</div>'+(list.length?'<div class="sc"><table class="t costT"><thead><tr><th style="width:120px">Date</th><th style="min-width:160px">Vendor</th><th style="min-width:140px">Bill / Inv</th><th class="r" style="width:120px;white-space:nowrap">'+usageHead+'</th><th class="r" style="width:110px;white-space:nowrap">Multiplier</th><th class="r" style="width:130px;white-space:nowrap">Amount</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')+'</div>';
     });
   } else tables='<div class="card" style="margin-top:12px"><div class="mu" style="padding:12px 0">Select a plant to view its monthly billing per category.</div></div>';
   return '<div class="card"><h3>Billing per Site</h3><div class="fgroup" style="margin:10px 0"><select data-bplant><option value="">— Select plant —</option>'+plantOpts+'</select><select data-bmonth>'+monthOpts+'</select><select data-byear>'+yearOpts+'</select></div>'+tables+'</div>';
@@ -885,6 +879,7 @@ function billFromAI(j,thumb,imgs){
   b.multiplier=(j.multiplier!=null?+j.multiplier:'');
   b.rate=(j.rate!=null?+j.rate:'');
   b.details=Array.isArray(j.details)?j.details.filter(d=>d&&d.label).map(d=>({label:String(d.label),value:String(d.value==null?'':d.value)})):[];
+  b.mp=(j.manpower&&typeof j.manpower==='object')?j.manpower:null;
   b.plant=guessPlant((j.plant||'')+' '+(j.vendor||''))||S.settings.plants[0];
   if(!b.per&&b.date)b.per=b.date.slice(0,7);
   return b;
@@ -957,7 +952,8 @@ function attPrompt(){return 'You read a Philippine manpower attendance / manning
    +'Dates are Month-Day-Year (MM-DD-YYYY), for example 08-04-2026 means August 4, 2026. The year is the current year ('+new Date().getFullYear()+'); if unclear, use the current year. Output the ISO date. Use "" or null when unreadable. '
    +'"notes" MUST briefly state which positions/names you could NOT read and why (blur, glare, faint, too small, cut off), or "clear" if all were legible.';}
 function billPrompt(){return 'You read a Philippine utility or manpower bill / invoice (photo or PDF). Return ONLY JSON: '
-   +'{"category":"Electricity"|"Water"|"Fuel"|"Manpower Agency"|"Others","vendor":string,"plant":string,"account_no":string,"bill_no":string,"period":"YYYY-MM","date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","amount":number,"kwh":number|null,"multiplier":number|null,"rate":number|null,"demand":number|null,"prev_reading":number|null,"pres_reading":number|null,"details":[{"label":string,"value":string}]}. '
+   +'{"category":"Electricity"|"Water"|"Fuel"|"Manpower Agency"|"Others","vendor":string,"plant":string,"account_no":string,"bill_no":string,"period":"YYYY-MM","date":"YYYY-MM-DD","due_date":"YYYY-MM-DD","amount":number,"kwh":number|null,"multiplier":number|null,"rate":number|null,"demand":number|null,"prev_reading":number|null,"pres_reading":number|null,"details":[{"label":string,"value":string}],"manpower":{"hc":number|null,"vol":number|null,"reg":number|null,"ot":number|null,"gov":number|null,"rel":number|null,"rm":number|null,"dl":number|null,"admin":number|null,"bill":number|null,"otamt":number|null,"wht":number|null,"pay":number|null,"status":string|null}|null}. '
+   +'If it is a manpower / agency billing, also fill "manpower" (headcount, volume MT, regular hours, overtime, government benefits, reliever, repair & maintenance, direct labor, admin fee, agency billing, OT amount, withholding, total payable, status); otherwise set "manpower" to null. '
    +'Choose category by content: kWh / electric => Electricity; cubic meter / m3 / water => Water; diesel / fuel => Fuel; manpower / agency => Manpower Agency; otherwise Others. '
    +'amount = the TOTAL AMOUNT DUE. For electricity: kwh = total kWh billed; multiplier, rate and demand as printed. For water: put the cubic meters in details. '
    +'Match the customer / plant name to the closest of: '+S.settings.plants.join(', ')+'. '
@@ -1224,6 +1220,7 @@ function saveDraft(){
     if(draft.id){saved=S.bills.find(x=>x.id===draft.id);Object.assign(saved,it)}
     else{saved=Object.assign({},it,{id:uid()});S.bills.push(saved)}
     pushRows([{type:'bill',data:stripImgs(saved)}]);
+    if((it.cat==='Manpower Agency'||it.mp)&&it.mp){const mr=Object.assign({id:uid()},it.mp,{plant:it.plant,agency:it.mp.agency||it.vendor||''});if(mr.pay==null)mr.pay=it.amt;S.man=S.man||[];S.man.push(mr);pushRows([{type:'manpower',data:stripImgs(mr)}]);}
   }else if(draft.kind==='man'){
     const r=Object.assign({id:uid()},it);S.man=S.man||[];S.man.push(r);pushRows([{type:'manpower',data:stripImgs(r)}]);save();closeModal();render();toast('Manpower record saved');return;
   }else{
@@ -1412,7 +1409,8 @@ function init(){
   if(S&&S.sample){S.bills=[];S.sheets=[];S.employees=[];delete S.sample;save()}
   if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],employees:[],deleted:[]};save()}
   if(!S.deleted)S.deleted=[];
-  if(!S.costs)S.costs=costSeed();
+  if(!S.costs)S.costs=[];
+  if(!S.seedPurged){const sig=new Set(costSeed().map(r=>r.plant+'|'+r.period+'|'+r.total));S.costs=(S.costs||[]).filter(r=>!sig.has(r.plant+'|'+r.period+'|'+r.total));S.seedPurged=true;save();}
   if(!S.man)S.man=[];
   if(!S.settings.positions)S.settings=defaultSettings();
   if(!S.settings.ai)S.settings.ai={key:'',model:'gemini-2.0-flash'};
