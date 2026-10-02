@@ -241,7 +241,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v13';
+const BUILD='build 2026-10-01 · v14';
 
 /* ---------- tiny helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -715,7 +715,7 @@ function billViewHTML(bv){
    +'<div class="grid g2" style="margin:0 0 10px"><div><div class="mu" style="'+lab+'">Amount due</div><b style="font-size:18px">'+peso(b.amt)+'</b></div><div><div class="mu" style="'+lab+'">Period</div><b>'+ml(b.per)+'</b></div></div>'
    +row('Vendor',esc(b.vendor||''))+row('Bill / Invoice no.',esc(b.inv||''))+row('Bill date',b.date?fD(b.date):'')+row('Due date',b.due?fD(b.due):'')+row('Account no.',esc(b.account||''))+row('Total kWh',b.kwh?Number(b.kwh).toLocaleString('en-PH'):'')+row('Multiplier',b.multiplier||'')+row('Rate / kWh',b.rate||'')
    +(det?'<div style="margin-top:10px"><b style="font-size:12px">Other details</b>'+det+'</div>':'')
-   +'</div><div class="mf"><button class="btn g" data-act="bview-edit" data-id="'+b.id+'">'+icon('edit',13)+' Edit</button><button class="btn g" data-act="close">Close</button></div></div></div>';
+   +'</div><div class="mf"><button class="btn g" data-act="bview-edit" data-id="'+b.id+'">'+icon('edit',13)+' Edit</button><button class="btn g" data-act="close">Close</button><button class="btn d" data-act="del-bill" data-id="'+b.id+'">Delete</button></div></div></div>';
 }
 function isoWeek(d){const t=new Date(d+'T00:00:00Z');const day=(t.getUTCDay()+6)%7;t.setUTCDate(t.getUTCDate()-day+3);const f=new Date(Date.UTC(t.getUTCFullYear(),0,4));const fd=(f.getUTCDay()+6)%7;f.setUTCDate(f.getUTCDate()-fd+3);return 1+Math.round((t-f)/(7*86400000))}
 function weekGrid(){
@@ -915,7 +915,17 @@ async function sheetPush(rows){
   const c=sheetCfg();if(!c.url||!c.token||!rows.length)return;
   try{await fetch(c.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:c.token,rows:rows})})}catch(e){}
 }
-function sheetMerge(local,remote){const m={};(local||[]).forEach(x=>m[x.id]=x);(remote||[]).forEach(x=>{if(x&&x.id)m[x.id]=x});return Object.values(m)}
+function sheetMerge(local,remote,exclude){const m={};(local||[]).forEach(x=>{if(!exclude||!exclude.has(x.id))m[x.id]=x});(remote||[]).forEach(x=>{if(x&&x.id&&(!exclude||!exclude.has(x.id)))m[x.id]=x});return Object.values(m)}
+function deleteSet(remote){const set=new Set();(S.deleted||[]).forEach(x=>set.add(x&&x.id?x.id:x));(remote||[]).forEach(x=>set.add(x&&x.id?x.id:x));return set}
+function deleteRecord(kind,id){
+  if(!id)return;
+  if(kind==='bill')S.bills=S.bills.filter(x=>x.id!==id);
+  else if(kind==='sheet')S.sheets=S.sheets.filter(x=>x.id!==id);
+  else S.employees=S.employees.filter(x=>x.id!==id);
+  S.deleted=S.deleted||[];S.deleted.push({id:id,kind:kind});
+  sheetPush([{type:'delete',data:{id:id,kind:kind}}]);
+  save();
+}
 async function sheetPushAll(){
   const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
   const rows=[].concat(sheetRows('bill',S.bills),sheetRows('sheet',S.sheets),sheetRows('employee',S.employees));
@@ -923,17 +933,17 @@ async function sheetPushAll(){
 }
 async function sheetPull(){
   const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
-  try{const j=await sheetRead();
-    S.bills=sheetMerge(S.bills,j.bills);S.sheets=sheetMerge(S.sheets,j.sheets);S.employees=sheetMerge(S.employees,j.employees);
+  try{const j=await sheetRead();const del=deleteSet(j.deletes);
+    S.bills=sheetMerge(S.bills,j.bills,del);S.sheets=sheetMerge(S.sheets,j.sheets,del);S.employees=sheetMerge(S.employees,j.employees,del);
     save();render();toast('Imported from Google Sheet');
   }catch(e){toast('Import failed — check the /exec URL, access = Anyone, and redeploy')}
 }
 async function sheetAutoSync(){
   const c=sheetCfg();if(!c.url||!c.token)return;
-  try{const j=await sheetRead();
+  try{const j=await sheetRead();const del=deleteSet(j.deletes);
     const b=S.bills.length,s=S.sheets.length,e=S.employees.length;
-    S.bills=sheetMerge(S.bills,j.bills);S.sheets=sheetMerge(S.sheets,j.sheets);S.employees=sheetMerge(S.employees,j.employees);
-    if(S.bills.length!==b||S.sheets.length!==s||S.employees.length!==e){save();render()}
+    S.bills=sheetMerge(S.bills,j.bills,del);S.sheets=sheetMerge(S.sheets,j.sheets,del);S.employees=sheetMerge(S.employees,j.employees,del);
+    if(S.bills.length!==b||S.sheets.length!==s||S.employees.length!==e||del.size){save();render()}
   }catch(err){}
 }
 function jsonp(url,param){return new Promise((resolve,reject)=>{const name='pcmdCB'+Math.random().toString(36).slice(2);const s=document.createElement('script');let done=false;window[name]=d=>{done=true;try{resolve(d)}finally{delete window[name];if(s.parentNode)s.remove()}};s.onerror=()=>{done=true;delete window[name];if(s.parentNode)s.remove();reject(new Error('load failed'))};s.src=url+(url.indexOf('?')<0?'?':'&')+param+'='+name;document.body.appendChild(s);setTimeout(()=>{if(!done){delete window[name];if(s.parentNode)s.remove();reject(new Error('timeout'))}},20000)})}
@@ -1003,7 +1013,7 @@ function renderModal(){
   const prev=document.querySelector('.modal-bg');const st=prev?prev.scrollTop:0;
   const isBill=draft.kind==='bill';
   let fbtn;
-  if(isBill)fbtn='<button class="btn a" data-act="save">Save bill</button>';
+  if(isBill)fbtn='<button class="btn a" data-act="save">Save bill</button>'+(draft.id?'<button class="btn d" data-act="del-bill" data-id="'+draft.id+'">Delete</button>':'');
   else if(!draft.id)fbtn='<button class="btn a" data-act="save">Validate &amp; save</button>';
   else fbtn='<button class="btn d" data-act="del-sheet">Delete</button>'+(draft.dirty?'<button class="btn a" data-act="save">Save changes</button>':'');
   el.innerHTML='<div class="modal-bg" data-act="close-bg"><div class="modal" style="max-width:'+(isBill?'900px':'1180px')+'"><div class="mh"><h3>'+(isBill?'Billing entry':'Attendance sheet')+'</h3><button class="x" data-act="close">'+icon('x',15)+'</button></div><div class="mb">'+(isBill?billForm():sheetForm())+'</div><div class="mf"><button class="btn g" data-act="close">'+(draft.id?'Close':'Cancel')+'</button>'+fbtn+'</div></div></div>';
@@ -1150,7 +1160,8 @@ function act(a,ds){
     case 'open-sheet':startSheet(ds.id);break;
     case 'week-add':startSheet(null,Object.assign(blankSheet(),{plant:ds.plant,date:ds.date,shift:ds.shift}));break;
     case 'grid-week':gridWeek=addDay(gridWeek,7*(+ds.n));render();break;
-    case 'del-sheet':if(confirm('Delete this attendance sheet? You can upload/record it again afterwards.')){S.sheets=S.sheets.filter(x=>x.id!==draft.id);save();closeModal();render();toast('Sheet deleted')}break;
+    case 'del-sheet':if(confirm('Delete this attendance sheet? It will also be removed from Google Sheet.')){deleteRecord('sheet',draft.id);closeModal();render();toast('Sheet deleted')}break;
+    case 'del-bill':{const id=ds.id||(draft&&draft.id);if(id&&confirm('Delete this bill? It will also be removed from Google Sheet.')){deleteRecord('bill',id);closeModal();render();toast('Bill deleted')}break;}
     case 'ind-person':pcal={name:ds.name};renderModal();break;
     case 'cal-open':pday={name:ds.name,date:ds.date};renderModal();break;
     case 'pcal-back':pday=null;renderModal();break;
@@ -1159,7 +1170,7 @@ function act(a,ds){
     case 'bview':bview={id:ds.id,idx:0};renderModal();break;
     case 'bview-tab':if(bview)bview.idx=+ds.i;renderModal();break;
     case 'bview-edit':closeModal();startBill(ds.id);break;
-    case 'del':if(ds.kind==='bill')S.bills=S.bills.filter(x=>x.id!==ds.id);else S.sheets=S.sheets.filter(x=>x.id!==ds.id);save();render();toast('Deleted');break;
+    case 'del':deleteRecord(ds.kind==='sheet'?'sheet':'bill',ds.id);render();toast('Deleted');break;
     case 'row':open[ds.id]=!open[ds.id];render();break;
     case 'more':lim+=60;render();break;
     case 'close':closeModal();break;
@@ -1170,7 +1181,7 @@ function act(a,ds){
     case 'ros-del':draft.data.ros.splice(+ds.i,1);syncActual();draft.dirty=true;renderModal();break;
     case 'req-reset':S.settings.positions.forEach(p=>{draft.data.rows[p]=[S.settings.req[p]||0,(draft.data.rows[p]||[0,0])[1]]});draft.dirty=true;renderModal();break;
     case 'emp-add':if(!S.employees)S.employees=[];S.employees.push({id:uid(),name:'New employee',position:S.settings.positions[0],agency:S.settings.agencies[0],status:'active',from:today(),to:'',note:''});save();render();break;
-    case 'emp-del':S.employees=(S.employees||[]).filter(e=>e.id!==ds.id);save();render();break;
+    case 'emp-del':deleteRecord('employee',ds.id);render();break;
     case 'print':window.print();break;
     case 'print-save':toast('Choose “Save as PDF” in the print dialog');setTimeout(()=>window.print(),300);break;
     case 'csv':exportCSV(ds.v);break;
@@ -1272,7 +1283,8 @@ function init(){
   paintTheme();
   S=load();
   if(S&&S.sample){S.bills=[];S.sheets=[];S.employees=[];delete S.sample;save()}
-  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],employees:[]};save()}
+  if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],employees:[],deleted:[]};save()}
+  if(!S.deleted)S.deleted=[];
   if(!S.settings.positions)S.settings=defaultSettings();
   if(!S.settings.ai)S.settings.ai={key:'',model:'gemini-2.0-flash'};
   if(!S.settings.sheet)S.settings.sheet={url:'',token:''};
