@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v29';
+const BUILD='build 2026-10-01 · v30';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -461,8 +461,8 @@ function pageCost(){
   const trows=cost.map((r,i)=>({r:r,i:i})).filter(o=>o.r.period===tmonth);
   const table='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">Production Cost</h3><select data-cmonth style="width:auto">'+mp.map(p=>'<option '+(p===tmonth?'selected':'')+'>'+esc(p)+'</option>').join('')+'</select></div><div class="fgroup"><button class="btn g s" data-act="cost-memo">'+(costMemo?'Hide Details':'Complete Details')+'</button><button class="btn a" data-act="cost-add">'+icon('plus',14)+' Add cost record</button></div></div>'
    +(costFormOpen?costFormHTML():'')
-   +'<div class="sc"><table class="t costT"><thead><tr><th>Plant</th>'+cols.map(c=>'<th class="'+(c[2]?'memo':'r')+'">'+esc(c[1])+'</th>').join('')+'<th class="tot r">Total Cost</th><th class="tot r">Cost Php/kg</th></tr></thead><tbody>'
-   +trows.map(o=>{const r=o.r;return '<tr class="'+(r.nat?'nat':'')+'"><td><b>'+esc(r.plant)+'</b></td>'+cols.map(c=>'<td class="r">'+costF2(r[c[0]])+'</td>').join('')+'<td class="r"><b>'+costF2(r.total)+'</b></td><td class="r cpk">'+costCpk(r).toFixed(2)+'</td></tr>'}).join('')
+   +'<div class="sc"><table class="t costT"><thead><tr><th>Plant</th>'+cols.map(c=>'<th class="'+(c[2]?'memo':'r')+'">'+esc(c[1])+'</th>').join('')+'<th class="tot r">Total Cost</th><th class="tot r">Cost Php/kg</th><th></th></tr></thead><tbody>'
+   +trows.map(o=>{const r=o.r;return '<tr class="'+(r.nat?'nat':'')+'"><td><b>'+esc(r.plant)+'</b></td>'+cols.map(c=>'<td class="r">'+costF2(r[c[0]])+'</td>').join('')+'<td class="r"><b>'+costF2(r.total)+'</b></td><td class="r cpk">'+costCpk(r).toFixed(2)+'</td><td><button class="x" data-act="cost-del" data-i="'+o.i+'" title="Delete">'+icon('x',13)+'</button></td></tr>'}).join('')
    +'</tbody></table></div></div>';
   const L=cost.filter(r=>r.period===last&&!r.nat&&r.vol>500000);
   const sites=[...new Set(cost.filter(r=>!r.nat).map(r=>r.plant))];
