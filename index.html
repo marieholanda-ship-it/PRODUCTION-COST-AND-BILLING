@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v32';
+const BUILD='build 2026-10-01 · v33';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -1000,7 +1000,7 @@ async function sheetPush(rows){
   try{await fetch(c.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:c.token,rows:rows})})}catch(e){}
 }
 function sheetMerge(local,remote,exclude){const m={};(local||[]).forEach(x=>{if(!exclude||!exclude.has(x.id))m[x.id]=x});(remote||[]).forEach(x=>{if(x&&x.id&&(!exclude||!exclude.has(x.id))){const p=m[x.id]||{};const o=Object.assign({},p,x);if(!x.thumb&&p.thumb)o.thumb=p.thumb;if(!x.imgs&&p.imgs)o.imgs=p.imgs;if(!x.driveUrl&&p.driveUrl)o.driveUrl=p.driveUrl;m[x.id]=o}});return Object.values(m)}
-function deleteSet(remote){const set=new Set();(S.deleted||[]).forEach(x=>set.add(x&&x.id?x.id:x));(remote||[]).forEach(x=>set.add(x&&x.id?x.id:x));return set}
+function deleteSet(remote){const ids=new Set(),keys=new Set();const add=o=>{if(!o)return;if(o.id)ids.add(o.id);if(o.k)keys.add((o.kind||'')+'::'+o.k)};(S.deleted||[]).forEach(add);(remote||[]).forEach(add);return {ids:ids,keys:keys}}
 function deleteRecord(kind,id){
   if(!id){toast('Delete failed: this record has no id');return false}
   S.bills=(S.bills||[]).filter(x=>x.id!==id);
@@ -1025,9 +1025,11 @@ function removeRecord(kind,rec){
   else if(kind==='cost')S.costs=take(S.costs);
   else S.employees=take(S.employees);
   const good=ids.filter(Boolean);
-  good.forEach(id=>{S.deleted=S.deleted||[];S.deleted.push({id:id,kind:kind})});
+  S.deleted=S.deleted||[];
+  if(k)S.deleted.push({id:'',kind:kind,k:k});
+  good.forEach(id=>S.deleted.push({id:id,kind:kind,k:k}));
   const rows=good.map(id=>({type:'delete',data:{id:id,kind:kind}}));if(rows.length)sheetPush(rows);
-  save();return good.length;
+  save();return good.length||(k?1:0);
 }
 async function sheetPushAll(){
   const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
@@ -1052,9 +1054,10 @@ async function sheetSyncNow(manual){
     const del=deleteSet(j.deletes);
     const keep={};(S.bills||[]).concat(S.sheets||[]).forEach(x=>{if(x.id&&(x.thumb||x.imgs))keep[x.id]={thumb:x.thumb,imgs:x.imgs}});
     const keepDrive={};(S.bills||[]).forEach(x=>{if(x.id&&x.driveUrl)keepDrive[x.id]=x.driveUrl});
-    const prep=arr=>(arr||[]).filter(x=>x&&x.id&&!del.has(x.id)).map(x=>{const o=Object.assign({},x),p=keep[x.id];if(p){if(p.thumb)o.thumb=p.thumb;if(p.imgs)o.imgs=p.imgs}if(keepDrive[x.id]&&!o.driveUrl)o.driveUrl=keepDrive[x.id];return o});
-    const per=(localArr,remoteArr)=>{const la=prep(localArr),ra=prep(remoteArr);if(manual)return ra;if(ra.length===0&&la.length>0)return la;return ra};
-    S.bills=per(S.bills,j.bills);S.sheets=per(S.sheets,j.sheets);S.employees=per(S.employees,j.employees);S.costs=per(S.costs,j.costs);S.man=per(S.man,j.manpower);
+    const isDel=(kind,x)=>x&&(del.ids.has(x.id)||(nkey(kind,x)&&del.keys.has(kind+'::'+nkey(kind,x))));
+    const prep=(kind,arr)=>(arr||[]).filter(x=>x&&x.id&&!isDel(kind,x)).map(x=>{const o=Object.assign({},x),p=keep[x.id];if(p){if(p.thumb)o.thumb=p.thumb;if(p.imgs)o.imgs=p.imgs}if(keepDrive[x.id]&&!o.driveUrl)o.driveUrl=keepDrive[x.id];return o});
+    const per=(kind,localArr,remoteArr)=>{const la=prep(kind,localArr),ra=prep(kind,remoteArr);if(manual)return ra;if(ra.length===0&&la.length>0)return la;return ra};
+    S.bills=per('bill',S.bills,j.bills);S.sheets=per('sheet',S.sheets,j.sheets);S.employees=per('employee',S.employees,j.employees);S.costs=per('cost',S.costs,j.costs);S.man=per('manpower',S.man,j.manpower);
     dedupeAll();save();render();if(manual)toast('Synced with Google Sheet');
   }catch(e){if(manual)toast('Sync failed — check the /exec URL, token and deployment')}
 }
@@ -1320,7 +1323,7 @@ function act(a,ds){
     case 'save-settings':save();render();toast('Settings saved');break;
     case 'cost-memo':costMemo=!costMemo;render();break;
     case 'man-del':{const i=+ds.i,rc=(S.man||[])[i];if(rc&&confirm('Delete this manpower record? It will also be removed from Google Sheet.')){removeRecord('manpower',rc);render();toast('Deleted — '+(S.man||[]).length+' left')}break;}
-    case 'man-clear-all':{const arr=S.man||[];if(!arr.length){toast('No manpower records');break}if(confirm('Remove ALL '+arr.length+' manpower records? They will also be deleted from Google Sheet.')){const rows=arr.map(x=>({type:'delete',data:{id:x.id,kind:'manpower'}})).filter(r=>r.data.id);S.deleted=S.deleted||[];rows.forEach(r=>S.deleted.push(r.data));if(rows.length)sheetPush(rows);S.man=[];save();render();toast('All manpower records removed')}break;}
+    case 'man-clear-all':{const arr=S.man||[];if(!arr.length){toast('No manpower records');break}if(confirm('Remove ALL '+arr.length+' manpower records? They will also be deleted from Google Sheet.')){const rows=arr.map(x=>({type:'delete',data:{id:x.id,kind:'manpower'}})).filter(r=>r.data.id);S.deleted=S.deleted||[];arr.forEach(x=>{S.deleted.push({id:x.id||'',kind:'manpower',k:nkey('manpower',x)})});if(rows.length)sheetPush(rows);S.man=[];save();render();toast('All manpower records removed')}break;}
     case 'multi-tab':multiIdx=+ds.i;renderMultiModal();break;
     case 'multi-save':{if(!multiSheets||!multiSheets.length)break;const emps=[],rows=[];multiSheets.forEach(d=>{const rec=Object.assign({},d,{id:uid()});S.sheets.push(rec);rows.push({type:'sheet',data:stripImgs(rec)});emps.push.apply(emps,upsertEmployees(d.ros,d.date,d.agency));gridWeek=sun(d.date)});rows.push.apply(rows,sheetRows('employee',emps));pushRows(rows);const n=multiSheets.length;multiSheets=null;save();closeModal();render();toast('Saved '+n+' sheets');break;}
     case 'cost-add':costFormOpen=!costFormOpen;render();break;
