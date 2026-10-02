@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v30';
+const BUILD='build 2026-10-01 · v31';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -488,7 +488,7 @@ function pageManpower(){
   const T=['plant','month','period','cutoff','payout','agency','status','billed'];
   const rows=(S.man||[]).map((r,i)=>{const v=Object.assign({},r,{_th:(+r.reg||0)+(+r.ot||0),_pot:r.pay?(+r.otamt||0)/r.pay*100:0,_cpt:r.vol?(+r.pay||0)/r.vol:0,_cph:r.hc?(+r.pay||0)/r.hc:0,_tph:r.hc?(+r.vol||0)/r.hc:0});
     return '<tr>'+MCOLS.map(c=>{const x=v[c[0]],left=T.indexOf(c[0])>=0;let val;if(c[0]==='_pot')val=(+x).toFixed(2)+'%';else if(c[0]==='_th'||c[0]==='_cpt'||c[0]==='_cph'||c[0]==='_tph')val=costF2(x);else if(left||c[0]==='year')val=esc(x==null?'':x);else val=costF2(x);return '<td class="'+(left?'l':'r')+'">'+val+'</td>'}).join('')+'<td><button class="x" data-act="man-del" data-i="'+i+'" title="Delete">'+icon('x',13)+'</button></td></tr>'}).join('');
-  return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><h3 style="margin:0">Manpower Monitoring</h3><div class="sub" style="margin:0">Records come from <b>Upload → Cost → Manpower agency billing</b>. Scan an agency sheet there and it appears here.</div></div><span class="pill p-n">'+(S.man||[]).length+' record(s)</span></div><div class="sc"><table class="t costT"><thead><tr>'+MCOLS.map(c=>'<th class="'+(T.indexOf(c[0])>=0?'':'r')+'">'+esc(c[1])+'</th>').join('')+'<th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="'+(MCOLS.length+1)+'" class="mu" style="padding:14px">No records yet — upload a manpower agency billing in Upload → Cost.</td></tr>')+'</tbody></table></div></div>';
+  return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><div><h3 style="margin:0">Manpower Monitoring</h3><div class="sub" style="margin:0">Records come from <b>Upload → Cost → Manpower agency billing</b>. Scan an agency sheet there and it appears here.</div></div><div class="fgroup"><span class="pill p-n">'+(S.man||[]).length+' record(s)</span>'+((S.man||[]).length?'<button class="btn d s" data-act="man-clear-all">'+icon('trash',14)+' Clear all</button>':'')+'</div></div><div class="sc"><table class="t costT"><thead><tr>'+MCOLS.map(c=>'<th class="'+(T.indexOf(c[0])>=0?'':'r')+'">'+esc(c[1])+'</th>').join('')+'<th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="'+(MCOLS.length+1)+'" class="mu" style="padding:14px">No records yet — upload a manpower agency billing in Upload → Cost.</td></tr>')+'</tbody></table></div></div>';
 }
 function manForm(){
   const d=draft.data||{};
@@ -1036,7 +1036,7 @@ async function sheetSyncNow(manual){
     const keep={};(S.bills||[]).concat(S.sheets||[]).forEach(x=>{if(x.id&&(x.thumb||x.imgs))keep[x.id]={thumb:x.thumb,imgs:x.imgs}});
     const keepDrive={};(S.bills||[]).forEach(x=>{if(x.id&&x.driveUrl)keepDrive[x.id]=x.driveUrl});
     const prep=arr=>(arr||[]).filter(x=>x&&x.id&&!del.has(x.id)).map(x=>{const o=Object.assign({},x),p=keep[x.id];if(p){if(p.thumb)o.thumb=p.thumb;if(p.imgs)o.imgs=p.imgs}if(keepDrive[x.id]&&!o.driveUrl)o.driveUrl=keepDrive[x.id];return o});
-    const per=(localArr,remoteArr)=>{const la=prep(localArr),ra=prep(remoteArr);if(ra.length===0&&la.length>0)return la;return ra};
+    const per=(localArr,remoteArr)=>{const la=prep(localArr),ra=prep(remoteArr);if(manual)return ra;if(ra.length===0&&la.length>0)return la;return ra};
     S.bills=per(S.bills,j.bills);S.sheets=per(S.sheets,j.sheets);S.employees=per(S.employees,j.employees);S.costs=per(S.costs,j.costs);S.man=per(S.man,j.manpower);
     save();render();if(manual)toast('Synced with Google Sheet');
   }catch(e){if(manual)toast('Sync failed — check the /exec URL, token and deployment')}
@@ -1303,6 +1303,7 @@ function act(a,ds){
     case 'save-settings':save();render();toast('Settings saved');break;
     case 'cost-memo':costMemo=!costMemo;render();break;
     case 'man-del':{const i=+ds.i,rc=(S.man||[])[i];if(rc&&confirm('Delete this manpower record? It will also be removed from Google Sheet.')){if(rc.id)deleteRecord('manpower',rc.id);else{S.man.splice(i,1);save()}render();toast('Deleted — '+(S.man||[]).length+' left')}break;}
+    case 'man-clear-all':{const arr=S.man||[];if(!arr.length){toast('No manpower records');break}if(confirm('Remove ALL '+arr.length+' manpower records? They will also be deleted from Google Sheet.')){const rows=arr.map(x=>({type:'delete',data:{id:x.id,kind:'manpower'}})).filter(r=>r.data.id);S.deleted=S.deleted||[];rows.forEach(r=>S.deleted.push(r.data));if(rows.length)sheetPush(rows);S.man=[];save();render();toast('All manpower records removed')}break;}
     case 'multi-tab':multiIdx=+ds.i;renderMultiModal();break;
     case 'multi-save':{if(!multiSheets||!multiSheets.length)break;const emps=[],rows=[];multiSheets.forEach(d=>{const rec=Object.assign({},d,{id:uid()});S.sheets.push(rec);rows.push({type:'sheet',data:stripImgs(rec)});emps.push.apply(emps,upsertEmployees(d.ros,d.date,d.agency));gridWeek=sun(d.date)});rows.push.apply(rows,sheetRows('employee',emps));pushRows(rows);const n=multiSheets.length;multiSheets=null;save();closeModal();render();toast('Saved '+n+' sheets');break;}
     case 'cost-add':costFormOpen=!costFormOpen;render();break;
