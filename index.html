@@ -1252,7 +1252,7 @@ function init(){
   if(!S.employees)S.employees=[];
   const lg=$('#logo');if(lg&&LOGO)lg.src=LOGO;
   render();
-  sheetAutoSync();setInterval(sheetAutoSync,60000);
+  sheetAutoSync();if(typeof setInterval==='function')setInterval(sheetAutoSync,60000);
 }
 init();
 </script>
