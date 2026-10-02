@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v28';
+const BUILD='build 2026-10-01 · v29';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -447,7 +447,7 @@ function costMulti(series,pers,fmt){if(!pers.length)return '<p class="mu">No mon
 function costDvg(D,fmt){const m=Math.max.apply(null,D.map(x=>Math.abs(x.v)).concat([.001])),mid=290,rh=26;
  return '<svg viewBox="0 0 520 '+(D.length*rh+6)+'" class="ch" style="max-height:280px"><line x1="'+mid+'" x2="'+mid+'" y1="0" y2="'+(D.length*rh)+'" class="gl"/>'+D.map((x,i)=>{const w=Math.abs(x.v)/m*150,up=x.v>=0;return '<text x="0" y="'+(i*rh+17)+'"'+(x.n==='TOTAL'?' style="fill:var(--ink);font-weight:700"':' class="ax"')+'>'+esc(x.n)+'</text><rect x="'+(up?mid:mid-w)+'" y="'+(i*rh+4)+'" width="'+Math.max(w,1)+'" height="17" rx="2" fill="'+(up?'#c0392b':'#4d8a1f')+'"/><text x="'+(up?mid+w+4:mid-w-4)+'" text-anchor="'+(up?'start':'end')+'" y="'+(i*rh+17)+'" style="fill:var(--ink);font-weight:700">'+fmt(x.v)+'</text>'}).join('')+'</svg>'}
 function pageCost(){
-  if(!S.costs)S.costs=[];
+  if(!S.costs||!S.costs.length)S.costs=costSeed();
   const cost=S.costs;
   const wt=cost.filter(r=>r.plant==='NATIONAL W/ TOLL');
   const nt=[...wt].reverse().find(r=>costParsePeriod(r.period)!=null)||wt[wt.length-1];
@@ -1033,13 +1033,11 @@ async function sheetSyncNow(manual){
     (S.man||[]).forEach(x=>{if(x.id&&!R.manpower.has(x.id))push.push({type:'manpower',data:stripImgs(x)})});
     if(push.length){await sheetPush(push);await new Promise(r=>setTimeout(r,1600));j=await sheetRead();if(!j||j.ok===false)return;}
     const del=deleteSet(j.deletes);
-    const total=['bills','sheets','employees','costs','manpower'].reduce((n,k)=>n+((j[k]||[]).length),0);
-    const localTotal=(S.bills||[]).length+(S.sheets||[]).length+(S.employees||[]).length+(S.costs||[]).length+(S.man||[]).length;
-    if(total===0&&localTotal>0){if(manual)toast('Sheet is empty — not replacing local data');return}
     const keep={};(S.bills||[]).concat(S.sheets||[]).forEach(x=>{if(x.id&&(x.thumb||x.imgs))keep[x.id]={thumb:x.thumb,imgs:x.imgs}});
     const keepDrive={};(S.bills||[]).forEach(x=>{if(x.id&&x.driveUrl)keepDrive[x.id]=x.driveUrl});
-    const filt=arr=>(arr||[]).filter(x=>x&&x.id&&!del.has(x.id)).map(x=>{const o=Object.assign({},x),p=keep[x.id];if(p){if(p.thumb)o.thumb=p.thumb;if(p.imgs)o.imgs=p.imgs}if(keepDrive[x.id]&&!o.driveUrl)o.driveUrl=keepDrive[x.id];return o});
-    S.bills=filt(j.bills);S.sheets=filt(j.sheets);S.employees=filt(j.employees);S.costs=filt(j.costs);S.man=filt(j.manpower);
+    const prep=arr=>(arr||[]).filter(x=>x&&x.id&&!del.has(x.id)).map(x=>{const o=Object.assign({},x),p=keep[x.id];if(p){if(p.thumb)o.thumb=p.thumb;if(p.imgs)o.imgs=p.imgs}if(keepDrive[x.id]&&!o.driveUrl)o.driveUrl=keepDrive[x.id];return o});
+    const per=(localArr,remoteArr)=>{const la=prep(localArr),ra=prep(remoteArr);if(ra.length===0&&la.length>0)return la;return ra};
+    S.bills=per(S.bills,j.bills);S.sheets=per(S.sheets,j.sheets);S.employees=per(S.employees,j.employees);S.costs=per(S.costs,j.costs);S.man=per(S.man,j.manpower);
     save();render();if(manual)toast('Synced with Google Sheet');
   }catch(e){if(manual)toast('Sync failed — check the /exec URL, token and deployment')}
 }
@@ -1409,8 +1407,7 @@ function init(){
   if(S&&S.sample){S.bills=[];S.sheets=[];S.employees=[];delete S.sample;save()}
   if(!S||!S.settings){S={settings:defaultSettings(),bills:[],sheets:[],employees:[],deleted:[]};save()}
   if(!S.deleted)S.deleted=[];
-  if(!S.costs)S.costs=[];
-  if(!S.seedPurged){const sig=new Set(costSeed().map(r=>r.plant+'|'+r.period+'|'+r.total));S.costs=(S.costs||[]).filter(r=>!sig.has(r.plant+'|'+r.period+'|'+r.total));S.seedPurged=true;save();}
+  if(!S.costs||!S.costs.length)S.costs=costSeed();
   if(!S.man)S.man=[];
   if(!S.settings.positions)S.settings=defaultSettings();
   if(!S.settings.ai)S.settings.ai={key:'',model:'gemini-2.0-flash'};
@@ -1421,6 +1418,7 @@ function init(){
   const lg=$('#logo');if(lg&&LOGO)lg.src=LOGO;
   render();
   sheetAutoSync();if(typeof setInterval==='function')setInterval(sheetAutoSync,60000);
+  try{window.addEventListener('focus',function(){sheetAutoSync()});document.addEventListener('visibilitychange',function(){if(!document.hidden)sheetAutoSync()})}catch(e){}
 }
 init();
 </script>
