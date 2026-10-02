@@ -245,7 +245,7 @@ const SIGS=[['prep','Prepared by (Agency Coordinator)'],['check','Checked by (Ag
 const CATCOLOR={'Electricity':'var(--c1)','Water':'var(--c2)','Fuel':'var(--c3)','Manpower Agency':'var(--c4)','Others':'var(--c5)'};
 const MN='Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
 const DW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const BUILD='build 2026-10-01 · v31';
+const BUILD='build 2026-10-01 · v32';
 /* ---------- production cost model ---------- */
 const COST_COLS=[['vol','Volume, kg'],['rental','Rental / Amor'],['spare','Spare Parts'],['mpd','Manpower Direct'],['diesel','Diesel'],['elec','Electricity Machine'],['agency','Manpower Agency'],['other','Other'],['third','3rd Party Service',1],['cess','CESS Depreciation',1],['spdep','SP Depreciation',1],['ins','Insurance Personnel',1],['water','Water',1],['thread','Thread',1],['toll','Tolling Fee']];
 const COST_KEYS=COST_COLS.map(c=>c[0]);
@@ -1012,6 +1012,23 @@ function deleteRecord(kind,id){
   sheetPush([{type:'delete',data:{id:id,kind:kind}}]);
   save();return true;
 }
+function nkey(kind,r){if(!r)return '';if(kind==='manpower')return [r.plant,r.month,r.year,r.period,r.agency].join('|').toLowerCase();if(kind==='sheet')return [r.plant,r.date,r.shift,r.agency].join('|').toLowerCase();if(kind==='bill')return [r.plant,r.cat,r.per,(r.inv||('amt'+r.amt))].join('|').toLowerCase();if(kind==='cost')return [r.plant,r.period].join('|').toLowerCase();return r.id}
+function dedupeList(arr,kind){const seen={},out=[];(arr||[]).forEach(x=>{if(!x)return;const k=nkey(kind,x)||x.id;if(seen[k])return;seen[k]=1;out.push(x)});return out}
+function dedupeAll(){S.bills=dedupeList(S.bills,'bill');S.sheets=dedupeList(S.sheets,'sheet');S.man=dedupeList(S.man,'manpower');S.costs=dedupeList(S.costs,'cost');S.employees=dedupeList(S.employees,'employee')}
+function removeRecord(kind,rec){
+  if(!rec)return 0;
+  const k=nkey(kind,rec),mat=x=>x&&(x.id===rec.id||(k&&nkey(kind,x)===k)),ids=[];
+  const take=arr=>(arr||[]).filter(x=>{if(mat(x)){ids.push(x.id);return false}return true});
+  if(kind==='manpower')S.man=take(S.man);
+  else if(kind==='sheet')S.sheets=take(S.sheets);
+  else if(kind==='bill')S.bills=take(S.bills);
+  else if(kind==='cost')S.costs=take(S.costs);
+  else S.employees=take(S.employees);
+  const good=ids.filter(Boolean);
+  good.forEach(id=>{S.deleted=S.deleted||[];S.deleted.push({id:id,kind:kind})});
+  const rows=good.map(id=>({type:'delete',data:{id:id,kind:kind}}));if(rows.length)sheetPush(rows);
+  save();return good.length;
+}
 async function sheetPushAll(){
   const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
   const rows=[].concat(sheetRows('bill',S.bills),sheetRows('sheet',S.sheets),sheetRows('employee',S.employees),sheetRows('cost',S.costs||[]),sheetRows('manpower',S.man||[]));
@@ -1038,7 +1055,7 @@ async function sheetSyncNow(manual){
     const prep=arr=>(arr||[]).filter(x=>x&&x.id&&!del.has(x.id)).map(x=>{const o=Object.assign({},x),p=keep[x.id];if(p){if(p.thumb)o.thumb=p.thumb;if(p.imgs)o.imgs=p.imgs}if(keepDrive[x.id]&&!o.driveUrl)o.driveUrl=keepDrive[x.id];return o});
     const per=(localArr,remoteArr)=>{const la=prep(localArr),ra=prep(remoteArr);if(manual)return ra;if(ra.length===0&&la.length>0)return la;return ra};
     S.bills=per(S.bills,j.bills);S.sheets=per(S.sheets,j.sheets);S.employees=per(S.employees,j.employees);S.costs=per(S.costs,j.costs);S.man=per(S.man,j.manpower);
-    save();render();if(manual)toast('Synced with Google Sheet');
+    dedupeAll();save();render();if(manual)toast('Synced with Google Sheet');
   }catch(e){if(manual)toast('Sync failed — check the /exec URL, token and deployment')}
 }
 async function sheetPull(){return sheetSyncNow(true)}
@@ -1270,8 +1287,8 @@ function act(a,ds){
     case 'open-sheet':startSheet(ds.id);break;
     case 'week-add':startSheet(null,Object.assign(blankSheet(),{plant:ds.plant,date:ds.date,shift:ds.shift}));break;
     case 'grid-week':gridWeek=addDay(gridWeek,7*(+ds.n));render();break;
-    case 'del-sheet':{const dd=(draft&&draft.data)||{};const rec=(S.sheets||[]).find(x=>x.id===(draft&&draft.id))||(S.sheets||[]).find(x=>x.plant===dd.plant&&x.date===dd.date&&x.shift===dd.shift&&x.agency===dd.agency);if(!rec){toast('Sheet not found — nothing deleted');break}if(confirm('Delete this attendance sheet? It will also be removed from Google Sheet.')){deleteRecord('sheet',rec.id);closeModal();render();toast('Sheet deleted')}break;}
-    case 'del-bill':{const id=ds.id||(draft&&draft.id);if(id&&confirm('Delete this bill? It will also be removed from Google Sheet.')){deleteRecord('bill',id);closeModal();render();toast('Bill deleted')}break;}
+    case 'del-sheet':{const dd=(draft&&draft.data)||{};const rec=(S.sheets||[]).find(x=>x.id===(draft&&draft.id))||(S.sheets||[]).find(x=>x.plant===dd.plant&&x.date===dd.date&&x.shift===dd.shift&&x.agency===dd.agency);if(!rec){toast('Sheet not found — nothing deleted');break}if(confirm('Delete this attendance sheet? It will also be removed from Google Sheet.')){removeRecord('sheet',rec);closeModal();render();toast('Sheet deleted')}break;}
+    case 'del-bill':{const id=ds.id||(draft&&draft.id);const rec=(S.bills||[]).find(x=>x.id===id);if(rec&&confirm('Delete this bill? It will also be removed from Google Sheet.')){removeRecord('bill',rec);closeModal();render();toast('Bill deleted')}break;}
     case 'ind-person':pcal={name:ds.name};renderModal();break;
     case 'cal-open':pday={name:ds.name,date:ds.date};renderModal();break;
     case 'pcal-back':pday=null;renderModal();break;
@@ -1302,13 +1319,13 @@ function act(a,ds){
     case 'sheet-pull':sheetPull();break;
     case 'save-settings':save();render();toast('Settings saved');break;
     case 'cost-memo':costMemo=!costMemo;render();break;
-    case 'man-del':{const i=+ds.i,rc=(S.man||[])[i];if(rc&&confirm('Delete this manpower record? It will also be removed from Google Sheet.')){if(rc.id)deleteRecord('manpower',rc.id);else{S.man.splice(i,1);save()}render();toast('Deleted — '+(S.man||[]).length+' left')}break;}
+    case 'man-del':{const i=+ds.i,rc=(S.man||[])[i];if(rc&&confirm('Delete this manpower record? It will also be removed from Google Sheet.')){removeRecord('manpower',rc);render();toast('Deleted — '+(S.man||[]).length+' left')}break;}
     case 'man-clear-all':{const arr=S.man||[];if(!arr.length){toast('No manpower records');break}if(confirm('Remove ALL '+arr.length+' manpower records? They will also be deleted from Google Sheet.')){const rows=arr.map(x=>({type:'delete',data:{id:x.id,kind:'manpower'}})).filter(r=>r.data.id);S.deleted=S.deleted||[];rows.forEach(r=>S.deleted.push(r.data));if(rows.length)sheetPush(rows);S.man=[];save();render();toast('All manpower records removed')}break;}
     case 'multi-tab':multiIdx=+ds.i;renderMultiModal();break;
     case 'multi-save':{if(!multiSheets||!multiSheets.length)break;const emps=[],rows=[];multiSheets.forEach(d=>{const rec=Object.assign({},d,{id:uid()});S.sheets.push(rec);rows.push({type:'sheet',data:stripImgs(rec)});emps.push.apply(emps,upsertEmployees(d.ros,d.date,d.agency));gridWeek=sun(d.date)});rows.push.apply(rows,sheetRows('employee',emps));pushRows(rows);const n=multiSheets.length;multiSheets=null;save();closeModal();render();toast('Saved '+n+' sheets');break;}
     case 'cost-add':costFormOpen=!costFormOpen;render();break;
     case 'cost-save':{const g=id=>document.getElementById(id);const plant=(g('nc_plant')||{}).value||'';const period=(g('nc_period')||{}).value||'';if(!plant||!period||!+(g('nc_vol')||{}).value){toast('Plant, period and volume are required');break;}const r={id:uid(),plant:plant,period:period};COST_KEYS.forEach(k=>r[k]=+((g('nc_'+k)||{}).value)||0);r.nat=/^NATIONAL/.test(plant)?1:0;r.total=COST_ADD.reduce((s,k)=>s+r[k],0);S.costs.push(r);pushRows([{type:'cost',data:stripImgs(r)}]);save();costFormOpen=false;render();toast('Cost record saved');break;}
-    case 'cost-del':{const rc=S.costs[+ds.i];if(rc&&confirm('Delete this cost row? It will also be removed from Google Sheet.')){deleteRecord('cost',rc.id);render();toast('Deleted')}break;}
+    case 'cost-del':{const rc=S.costs[+ds.i];if(rc&&confirm('Delete this cost row? It will also be removed from Google Sheet.')){removeRecord('cost',rc);render();toast('Deleted')}break;}
     case 'copy-diag':try{navigator.clipboard.writeText(diagText());toast('Diagnostics copied — paste to support')}catch(e){toast('Copy failed — select the text above manually')}break;
     case 'clear':if(confirm('Delete ALL recorded data from this browser? Export a backup first.')){S.bills=[];S.sheets=[];save();render();toast('All data cleared')}break;
     case 'rp-step':step(+ds.n);break;
@@ -1414,7 +1431,7 @@ function init(){
   if(!S.settings.ai)S.settings.ai={key:'',model:'gemini-2.0-flash'};
   if(!S.settings.sheet)S.settings.sheet={url:'',token:''};
   if(!S.employees)S.employees=[];
-  prunePhotos();
+  prunePhotos();dedupeAll();
   const _ds=(S.sheets||[]).map(s=>s.date).filter(Boolean).sort();if(_ds.length)gridWeek=sun(_ds[_ds.length-1]);
   const lg=$('#logo');if(lg&&LOGO)lg.src=LOGO;
   render();
