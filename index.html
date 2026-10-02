@@ -976,7 +976,7 @@ function deleteRecord(kind,id){
 }
 async function sheetPushAll(){
   const c=sheetCfg();if(!c.url||!c.token){toast('Set the Web App URL and token first');return}
-  const rows=[].concat(sheetRows('bill',S.bills),sheetRows('sheet',S.sheets),sheetRows('employee',S.employees));
+  const rows=[].concat(sheetRows('bill',S.bills),sheetRows('sheet',S.sheets),sheetRows('employee',S.employees),sheetRows('cost',S.costs||[]));
   toast('Sending '+rows.length+' records…');await sheetPush(rows);toast('Sent to Google Sheet');
 }
 async function sheetPull(){
